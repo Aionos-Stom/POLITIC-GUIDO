@@ -1336,17 +1336,11 @@ DOM.registerForm?.addEventListener('submit', async function(e) {
   if (insertError) { showMessage(DOM.authMessage, 'Error al registrar: ' + insertError.message, 'error'); return; }
 
   if (typeof window.logAudit === 'function') window.logAudit('USER_CREATE', newUserId, name, {
-    usuario:     username,
-    rol:         role,
-    estado:      status,
-    correo:      email,
-    teléfono:    phone,
-    región:      region,
-    provincia:   province,
-    municipio:   municipio,
-    distrito:    distrito,
-    zona:        zone,
-    creado_por:  currentUser ? currentUser.name + ' (' + currentUser.role + ')' : 'Registro inicial del sistema',
+    tipo: 'registro',
+    usuario:   '@' + username,
+    rol:       role,
+    provincia: province || '—',
+    estado:    status,
   });
   resetUserForm();
   await updateInitialHint();
@@ -1405,18 +1399,12 @@ DOM.userEditForm?.addEventListener('submit', async function(e) {
     registered_by_zone:     zone
   }).eq('registered_by_id', editingId);
 
-  if (typeof window.logAudit === 'function') window.logAudit('USER_EDIT', editingId, name, {
-    usuario:     username,
-    rol:         role,
-    correo:      email,
-    teléfono:    phone,
-    región:      region,
-    provincia:   province,
-    municipio:   municipio,
-    distrito:    distrito,
-    zona:        zone,
-    editado_por: currentUser ? currentUser.name + ' (' + currentUser.role + ')' : '—',
-  });
+  if (typeof window.logAudit === 'function') {
+    const _orig = users.find(function(u) { return u.id === editingId; }) || {};
+    const _campos = { Nombre: [_orig.name, name], Usuario: [_orig.username, username], Rol: [_orig.role, role], Correo: [_orig.email, email], Teléfono: [_orig.phone, phone], Región: [_orig.region, region], Provincia: [_orig.province, province], Municipio: [_orig.municipio, municipio], Distrito: [_orig.distrito, distrito], Zona: [_orig.zone, zone] };
+    const _cambios = Object.entries(_campos).filter(function(kv) { return String(kv[1][0]||'') !== String(kv[1][1]||''); }).map(function(kv) { return { campo: kv[0], antes: kv[1][0]||'—', despues: kv[1][1]||'—' }; });
+    window.logAudit('USER_EDIT', editingId, name, { tipo: 'edicion', cambios: _cambios });
+  }
   if (currentUser?.id === editingId) {
     currentUser = { ...currentUser, name, username, role, email, phone, region, province, municipio, distrito, zone };
   }
@@ -1446,11 +1434,7 @@ DOM.usersListContainer?.addEventListener('click', async function(e) {
     const { error } = await supabase.from('users').update({ status: 'Aprobado' }).eq('id', id);
     if (error) { showMessage(DOM.authMessage, 'Error al aprobar: ' + error.message, 'error'); return; }
     if (typeof window.logAudit === 'function') window.logAudit('USER_APPROVE', id, user.name, {
-      usuario:      user.username,
-      rol:          user.role,
-      correo:       user.email    || '—',
-      provincia:    user.province || '—',
-      aprobado_por: currentUser ? currentUser.name + ' (' + currentUser.role + ')' : '—',
+      tipo: 'registro', usuario: '@' + user.username, rol: user.role, provincia: user.province || '—',
     });
     showMessage(DOM.authMessage, 'Usuario aprobado correctamente.', 'success');
     await renderUsers(); await updateStats();
@@ -1471,12 +1455,7 @@ DOM.usersListContainer?.addEventListener('click', async function(e) {
     const { error } = await supabase.from('users').delete().eq('id', id);
     if (error) { showMessage(DOM.authMessage, 'Error al eliminar: ' + error.message, 'error'); return; }
     if (typeof window.logAudit === 'function') window.logAudit('USER_DELETE', id, user.name, {
-      usuario:             user.username,
-      correo:              user.email    || '—',
-      rol:                 user.role,
-      provincia:           user.province || '—',
-      registros_vinculados: linked,
-      eliminado_por:       currentUser ? currentUser.name + ' (' + currentUser.role + ')' : '—',
+      tipo: 'eliminacion', usuario: '@' + user.username, rol: user.role, provincia: user.province || '—', registros: linked + ' reg. vinculados',
     });
     showMessage(DOM.authMessage, 'Usuario eliminado correctamente.', 'success');
     await fillFilterOptions(); await renderAll(); updateAdminAccess();
@@ -1529,19 +1508,14 @@ DOM.voterForm?.addEventListener('submit', async function(e) {
     });
     if (error) { showMessage(DOM.voterMessage, 'Error al guardar: ' + error.message, 'error'); return; }
     if (typeof window.logAudit === 'function') window.logAudit('VOTER_CREATE', null, name, {
-      cédula:         cedula,
-      edad:           edad ? edad + ' años' : '—',
-      teléfono:       phone,
-      región:         region,
-      provincia:      province,
-      municipio:      municipio,
-      distrito:       distrito,
-      zona:           zone,
-      sector:         sector,
-      mesa:           mesa,
-      recinto:        recinto,
-      observación:    observacion || '—',
-      registrado_por: currentUser.name + ' (' + currentUser.role + ')',
+      tipo: 'registro',
+      cédula:    cedula,
+      edad:      edad ? edad + ' años' : '—',
+      teléfono:  phone || '—',
+      provincia: province || '—',
+      municipio: municipio || '—',
+      zona:      zone || '—',
+      sector:    sector || '—',
     });
     resetVoterForm();
     showMessage(DOM.voterMessage, 'Registro guardado correctamente.', 'success');
@@ -1550,8 +1524,8 @@ DOM.voterForm?.addEventListener('submit', async function(e) {
   }
 
   // Editar — admin o el propio registrador
-  const { data: voterToCheck } = await supabase.from('voters').select('registered_by_id').eq('id', editingId).maybeSingle();
-  if (!hasSuperAccess() && voterToCheck?.registered_by_id !== currentUser?.id) {
+  const { data: originalVoter } = await supabase.from('voters').select('*').eq('id', editingId).maybeSingle();
+  if (!hasSuperAccess() && originalVoter?.registered_by_id !== currentUser?.id) {
     showMessage(DOM.voterMessage, 'Solo puedes editar registros que tú hayas registrado.', 'error'); return;
   }
   const { data: dup } = await supabase.from('voters').select('id').eq('cedula', cedula).neq('id', editingId).maybeSingle();
@@ -1561,21 +1535,12 @@ DOM.voterForm?.addEventListener('submit', async function(e) {
     .update({ name, cedula, phone, edad, region, province, municipio, distrito, zone, sector, mesa, recinto, observacion, updated_at: new Date().toISOString() })
     .eq('id', editingId);
   if (error) { showMessage(DOM.voterMessage, 'Error al actualizar: ' + error.message, 'error'); return; }
-  if (typeof window.logAudit === 'function') window.logAudit('VOTER_EDIT', editingId, name, {
-    cédula:      cedula,
-    edad:        edad ? edad + ' años' : '—',
-    teléfono:    phone,
-    región:      region,
-    provincia:   province,
-    municipio:   municipio,
-    distrito:    distrito,
-    zona:        zone,
-    sector:      sector,
-    mesa:        mesa,
-    recinto:     recinto,
-    observación: observacion || '—',
-    editado_por: currentUser.name + ' (' + currentUser.role + ')',
-  });
+  if (typeof window.logAudit === 'function') {
+    const _ov = originalVoter || {};
+    const _campos = { Nombre: [_ov.name, name], Cédula: [_ov.cedula, cedula], Teléfono: [_ov.phone, phone], Edad: [_ov.edad, edad], Región: [_ov.region, region], Provincia: [_ov.province, province], Municipio: [_ov.municipio, municipio], Distrito: [_ov.distrito, distrito], Zona: [_ov.zone, zone], Sector: [_ov.sector, sector], Mesa: [_ov.mesa, mesa], Recinto: [_ov.recinto, recinto], Observación: [_ov.observacion, observacion] };
+    const _cambios = Object.entries(_campos).filter(function(kv) { return String(kv[1][0]||'') !== String(kv[1][1]||''); }).map(function(kv) { return { campo: kv[0], antes: kv[1][0]||'—', despues: kv[1][1]||'—' }; });
+    window.logAudit('VOTER_EDIT', editingId, name, { tipo: 'edicion', cambios: _cambios });
+  }
   resetVoterForm();
   showMessage(DOM.voterMessage, 'Registro actualizado correctamente.', 'success');
   await fillFilterOptions(); await renderAll();
@@ -1608,16 +1573,14 @@ DOM.votersTableBody?.addEventListener('click', async function(e) {
     const { error } = await supabase.from('voters').delete().eq('id', id);
     if (error) { showMessage(DOM.voterMessage, 'Error al eliminar: ' + error.message, 'error'); return; }
     if (typeof window.logAudit === 'function') window.logAudit('VOTER_DELETE', id, voter.name, {
-      cédula:         voter.cedula,
-      teléfono:       voter.phone     || '—',
-      provincia:      voter.province  || '—',
-      municipio:      voter.municipio || '—',
-      zona:           voter.zone      || '—',
-      sector:         voter.sector    || '—',
-      mesa:           voter.mesa      || '—',
-      recinto:        voter.recinto   || '—',
-      registrado_por: voter.registered_by_name || '—',
-      eliminado_por:  currentUser ? currentUser.name + ' (' + currentUser.role + ')' : '—',
+      tipo: 'eliminacion',
+      cédula:    voter.cedula,
+      edad:      voter.edad ? voter.edad + ' años' : '—',
+      teléfono:  voter.phone     || '—',
+      provincia: voter.province  || '—',
+      municipio: voter.municipio || '—',
+      zona:      voter.zone      || '—',
+      sector:    voter.sector    || '—',
     });
     if (DOM.editingVoterId?.value === id) resetVoterForm();
     showMessage(DOM.voterMessage, 'Registro eliminado correctamente.', 'success');
@@ -1652,16 +1615,14 @@ DOM.searchResults?.addEventListener('click', async function(e) {
     const { error } = await supabase.from('voters').delete().eq('id', id);
     if (error) { showMessage(DOM.voterMessage, 'Error al eliminar: ' + error.message, 'error'); return; }
     if (typeof window.logAudit === 'function') window.logAudit('VOTER_DELETE', id, voter.name, {
-      cédula:         voter.cedula,
-      teléfono:       voter.phone     || '—',
-      provincia:      voter.province  || '—',
-      municipio:      voter.municipio || '—',
-      zona:           voter.zone      || '—',
-      sector:         voter.sector    || '—',
-      mesa:           voter.mesa      || '—',
-      recinto:        voter.recinto   || '—',
-      registrado_por: voter.registered_by_name || '—',
-      eliminado_por:  currentUser ? currentUser.name + ' (' + currentUser.role + ')' : '—',
+      tipo: 'eliminacion',
+      cédula:    voter.cedula,
+      edad:      voter.edad ? voter.edad + ' años' : '—',
+      teléfono:  voter.phone     || '—',
+      provincia: voter.province  || '—',
+      municipio: voter.municipio || '—',
+      zona:      voter.zone      || '—',
+      sector:    voter.sector    || '—',
     });
     if (DOM.editingVoterId?.value === id) resetVoterForm();
     showMessage(DOM.voterMessage, 'Registro eliminado correctamente.', 'success');

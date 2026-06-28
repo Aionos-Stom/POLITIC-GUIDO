@@ -1976,6 +1976,33 @@ body.modal-open { overflow: hidden; }
   color: var(--text-muted); font-style: italic;
   font-size: 0.65rem;
 }
+
+/* Detalles desplegables */
+.audit-expand { font-size: 0.78rem; }
+.audit-expand-summary {
+  cursor: pointer; list-style: none;
+  color: var(--gov-blue, #1d4ed8); font-weight: 600; font-size: 0.74rem;
+  padding: 1px 0; user-select: none; white-space: nowrap;
+}
+.audit-expand-summary::-webkit-details-marker { display: none; }
+.audit-expand-summary::before { content: '▸ '; font-size: 0.6rem; }
+details[open] .audit-expand-summary::before { content: '▾ '; }
+.audit-diff-list {
+  margin-top: 6px; display: flex; flex-direction: column; gap: 4px;
+}
+.audit-diff-row {
+  display: flex; align-items: baseline; gap: 5px;
+  font-size: 0.71rem; flex-wrap: wrap;
+}
+.audit-diff-campo {
+  font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+  font-size: 0.6rem; letter-spacing: 0.04em; min-width: 68px; flex-shrink: 0;
+}
+.audit-diff-antes {
+  color: #b91c1c; text-decoration: line-through; opacity: 0.8;
+}
+.audit-diff-arrow { color: var(--text-muted); font-size: 0.65rem; }
+.audit-diff-despues { color: #15803d; font-weight: 600; }
 .audit-empty-row    { text-align: center; padding: 28px; color: var(--text-muted); font-size: 0.875rem; }
 
 /* Role pill */

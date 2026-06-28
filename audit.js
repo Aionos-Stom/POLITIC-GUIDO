@@ -361,28 +361,61 @@
     }
     if (typeof obj !== "object" || obj === null) obj = {};
 
+    // ── EDICIÓN: mostrar diff antes → después ─────────────
+    if (obj.tipo === "edicion" && Array.isArray(obj.cambios)) {
+      var cambios = obj.cambios.filter(function(c) { return c && c.campo; });
+      if (!cambios.length) return '<span class="audit-null">Sin cambios</span>';
+      var rows = cambios.map(function(c) {
+        return '<div class="audit-diff-row">' +
+          '<span class="audit-diff-campo">' + esc(c.campo) + '</span>' +
+          '<span class="audit-diff-antes">' + esc(String(c.antes)) + '</span>' +
+          '<span class="audit-diff-arrow">→</span>' +
+          '<span class="audit-diff-despues">' + esc(String(c.despues)) + '</span>' +
+        '</div>';
+      }).join('');
+      var n = cambios.length;
+      return '<details class="audit-expand">' +
+        '<summary class="audit-expand-summary">' + n + ' campo' + (n !== 1 ? 's' : '') + ' modificado' + (n !== 1 ? 's' : '') + '</summary>' +
+        '<div class="audit-diff-list">' + rows + '</div>' +
+      '</details>';
+    }
+
+    // ── REGISTRO / ELIMINACIÓN: mostrar datos clave ───────
+    if (obj.tipo === "eliminacion" || obj.tipo === "registro") {
+      var entries = Object.entries(obj).filter(function(kv) {
+        return kv[0] !== "tipo" && kv[1] && kv[1] !== "—";
+      });
+      if (!entries.length) return '<span class="audit-null">—</span>';
+      var peek = entries.slice(0, 2).map(function(kv) { return esc(String(kv[1])); }).join(' · ');
+      var body = entries.map(function(kv) {
+        return '<div class="audit-diff-row">' +
+          '<span class="audit-diff-campo">' + esc(kv[0]) + '</span>' +
+          '<span class="audit-diff-despues">' + esc(String(kv[1])) + '</span>' +
+        '</div>';
+      }).join('');
+      return '<details class="audit-expand">' +
+        '<summary class="audit-expand-summary">' + peek + '</summary>' +
+        '<div class="audit-diff-list">' + body + '</div>' +
+      '</details>';
+    }
+
+    // ── FALLBACK: registros antiguos sin campo "tipo" ─────
     var parts = [];
     switch (action) {
-      case "SESSION_LOGIN":
-      case "SESSION_LOGOUT":
+      case "SESSION_LOGIN": case "SESSION_LOGOUT":
         if (obj.provincia && obj.provincia !== "—") parts.push(obj.provincia);
         break;
-      case "USER_CREATE":
-      case "USER_EDIT":
-      case "USER_APPROVE":
-        if (obj.usuario) parts.push("@" + obj.usuario);
-        if (obj.rol)     parts.push(obj.rol);
+      case "USER_CREATE": case "USER_EDIT": case "USER_APPROVE":
+        if (obj.usuario) parts.push(obj.usuario.startsWith('@') ? obj.usuario : "@" + obj.usuario);
+        if (obj.rol) parts.push(obj.rol);
         break;
       case "USER_DELETE":
-        if (obj.usuario)              parts.push("@" + obj.usuario);
-        if (obj.rol)                  parts.push(obj.rol);
-        if (obj.registros_vinculados) parts.push(obj.registros_vinculados + " reg.");
+        if (obj.usuario) parts.push(obj.usuario.startsWith('@') ? obj.usuario : "@" + obj.usuario);
+        if (obj.rol) parts.push(obj.rol);
         break;
-      case "VOTER_CREATE":
-      case "VOTER_EDIT":
-      case "VOTER_DELETE":
-        if (obj["cédula"])                           parts.push(obj["cédula"]);
-        if (obj.provincia && obj.provincia !== "—")  parts.push(obj.provincia);
+      case "VOTER_CREATE": case "VOTER_EDIT": case "VOTER_DELETE":
+        if (obj["cédula"]) parts.push(obj["cédula"]);
+        if (obj.provincia && obj.provincia !== "—") parts.push(obj.provincia);
         break;
       case "DATA_EXPORT":
         if (obj.tipo)            parts.push(obj.tipo);
@@ -392,15 +425,11 @@
       case "PASSWORD_RESET":
         if (obj.usuario) parts.push("@" + obj.usuario);
         break;
-      case "VOTER_DUPLICATE":
-        if (obj["cédula"]) parts.push(obj["cédula"]);
-        break;
       default: {
-        var first = Object.values(obj).find(function (v) { return v && v !== "—"; });
+        var first = Object.values(obj).find(function(v) { return v && v !== "—"; });
         if (first) parts.push(String(first).slice(0, 35));
       }
     }
-
     if (!parts.length) return '<span class="audit-null">—</span>';
     return '<span class="audit-detail-text">' + parts.map(esc).join(" · ") + '</span>';
   }
