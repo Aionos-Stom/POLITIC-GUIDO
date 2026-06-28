@@ -1507,11 +1507,14 @@ tbody tr:last-child td { border-bottom: none; }
 .modal-header p  { font-size: 0.81rem; color: var(--text-muted); margin-top: 3px; }
 
 .modal-close-btn {
-  width: 30px; height: 30px; border-radius: var(--r-sm);
+  width: 32px; height: 32px; min-width: 32px; min-height: 32px;
+  border-radius: var(--r-sm); border: none; cursor: pointer;
   background: var(--bg-subtle); color: var(--text-secondary);
-  font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all var(--t-fast); line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all var(--t-fast);
+  -webkit-tap-highlight-color: transparent;
 }
+.modal-close-btn svg { display: block; pointer-events: none; }
 .modal-close-btn:hover { background: var(--gov-red-light); color: var(--gov-red); }
 body.modal-open { overflow: hidden; }
 
@@ -1654,6 +1657,7 @@ body.modal-open { overflow: hidden; }
   .card            { padding: 16px 14px; }
   .card-header     { flex-direction: column; gap: 10px; align-items: flex-start; }
   .modal-card      { padding: 20px 16px; border-radius: var(--r-lg); }
+  .modal-close-btn { width: 38px; height: 38px; min-width: 38px; min-height: 38px; }
   .modal-actions   { flex-direction: column-reverse; gap: 8px; }
   .modal-actions .primary-btn,
   .modal-actions .clear-btn { width: 100%; justify-content: center; }
