@@ -185,7 +185,7 @@
     } else {
       slice.forEach(function (e) {
         var meta    = ACTION_META[e.action] || { label: e.action, badge: "info", objetivo: "—" };
-        var details = safeDetails(e.details);
+        var details = safeDetails(e);
         var tr = document.createElement("tr");
         tr.innerHTML =
           '<td class="audit-ts-cell">'     + esc(formatTs(e.ts)) + "</td>" +
@@ -349,38 +349,60 @@
     });
   }
 
-  var DETAIL_LIMIT = 4;
-  var VAL_MAX     = 22;
-
-  function safeDetails(raw) {
+  function safeDetails(e) {
+    var raw    = e.details;
+    var action = e.action || "";
     if (!raw) return '<span class="audit-null">—</span>';
-    try {
-      var obj = JSON.parse(raw);
-      if (typeof obj === "string") {
-        var s = obj.length > 40 ? obj.slice(0, 38) + "…" : obj;
-        return '<span class="audit-detail-text">' + esc(s) + '</span>';
-      }
-      var entries = Object.entries(obj).filter(function (kv) {
-        return kv[1] !== null && kv[1] !== undefined && String(kv[1]).trim() !== "" && kv[1] !== "—";
-      });
-      if (!entries.length) return '<span class="audit-null">—</span>';
-      var shown   = entries.slice(0, DETAIL_LIMIT);
-      var extra   = entries.length - shown.length;
-      return '<div class="audit-detail-grid">' +
-        shown.map(function (kv) {
-          var val = String(kv[1]);
-          if (val.length > VAL_MAX) val = val.slice(0, VAL_MAX - 1) + "…";
-          return '<span class="audit-detail-item">' +
-            '<span class="audit-detail-key">' + esc(kv[0]) + '</span>' +
-            '<span class="audit-detail-val">' + esc(val) + '</span>' +
-          '</span>';
-        }).join("") +
-        (extra > 0 ? '<span class="audit-detail-item audit-detail-more">+' + extra + ' más</span>' : '') +
-      '</div>';
-    } catch (e) {
-      var s = String(raw); s = s.length > 40 ? s.slice(0, 38) + "…" : s;
+
+    var obj = {};
+    try { obj = JSON.parse(raw); } catch (x) {
+      var s = String(raw); s = s.length > 50 ? s.slice(0, 48) + "…" : s;
       return '<span class="audit-detail-text">' + esc(s) + '</span>';
     }
+    if (typeof obj !== "object" || obj === null) obj = {};
+
+    var parts = [];
+    switch (action) {
+      case "SESSION_LOGIN":
+      case "SESSION_LOGOUT":
+        if (obj.provincia && obj.provincia !== "—") parts.push(obj.provincia);
+        break;
+      case "USER_CREATE":
+      case "USER_EDIT":
+      case "USER_APPROVE":
+        if (obj.usuario) parts.push("@" + obj.usuario);
+        if (obj.rol)     parts.push(obj.rol);
+        break;
+      case "USER_DELETE":
+        if (obj.usuario)              parts.push("@" + obj.usuario);
+        if (obj.rol)                  parts.push(obj.rol);
+        if (obj.registros_vinculados) parts.push(obj.registros_vinculados + " reg.");
+        break;
+      case "VOTER_CREATE":
+      case "VOTER_EDIT":
+      case "VOTER_DELETE":
+        if (obj["cédula"])                           parts.push(obj["cédula"]);
+        if (obj.provincia && obj.provincia !== "—")  parts.push(obj.provincia);
+        break;
+      case "DATA_EXPORT":
+        if (obj.tipo)            parts.push(obj.tipo);
+        if (obj.total_registros) parts.push(obj.total_registros + " registros");
+        if (obj.formato)         parts.push(obj.formato);
+        break;
+      case "PASSWORD_RESET":
+        if (obj.usuario) parts.push("@" + obj.usuario);
+        break;
+      case "VOTER_DUPLICATE":
+        if (obj["cédula"]) parts.push(obj["cédula"]);
+        break;
+      default: {
+        var first = Object.values(obj).find(function (v) { return v && v !== "—"; });
+        if (first) parts.push(String(first).slice(0, 35));
+      }
+    }
+
+    if (!parts.length) return '<span class="audit-null">—</span>';
+    return '<span class="audit-detail-text">' + parts.map(esc).join(" · ") + '</span>';
   }
 
   /* Versión texto plano para exportar a Excel/PDF */
