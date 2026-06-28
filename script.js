@@ -539,21 +539,23 @@ async function renderSearchResults() {
     item.className = 'result-item';
     item.innerHTML = `
       <div class="result-card-name">${escapeHtml(v.name)}</div>
-      ${field('CÉDULA', v.cedula)}
-      ${field('EDAD', v.edad ? v.edad + ' años' : '')}
-      ${field('TELÉFONO', v.phone)}
-      ${field('REGIÓN', v.region)}
-      ${field('PROVINCIA', v.province)}
-      ${field('MUNICIPIO', v.municipio)}
-      ${field('DISTRITO', v.distrito)}
-      ${field('ZONA', v.zone)}
-      ${field('SECTOR', v.sector)}
-      ${field('RECINTO', v.recinto)}
-      ${field('MESA', v.mesa)}
-      ${field('OBSERVACIÓN', v.observacion)}
-      <div class="result-field">
-        <span class="result-field-label">REGISTRADO POR</span>
-        <span class="result-field-value">${escapeHtml(v.registered_by_name)} · ${escapeHtml(v.registered_by_role)}</span>
+      <div class="result-fields-wrap">
+        ${field('CÉDULA', v.cedula)}
+        ${field('EDAD', v.edad ? v.edad + ' años' : '')}
+        ${field('TELÉFONO', v.phone)}
+        ${field('REGIÓN', v.region)}
+        ${field('PROVINCIA', v.province)}
+        ${field('MUNICIPIO', v.municipio)}
+        ${field('DISTRITO', v.distrito)}
+        ${field('ZONA', v.zone)}
+        ${field('SECTOR', v.sector)}
+        ${field('RECINTO', v.recinto)}
+        ${field('MESA', v.mesa)}
+        ${field('OBSERVACIÓN', v.observacion)}
+        <div class="result-field">
+          <span class="result-field-label">REGISTRADO POR</span>
+          <span class="result-field-value">${escapeHtml(v.registered_by_name)} · ${escapeHtml(v.registered_by_role)}</span>
+        </div>
       </div>
       <div class="result-card-footer">
         <span class="result-date">${escapeHtml(formatDateDisplay(v.updated_at || v.created_at))}</span>

@@ -1123,11 +1123,11 @@ body {
   align-items: start;
 }
 
-/* Search results */
+/* Search results — desktop: filas horizontales */
 .search-results {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   margin-top: 16px;
 }
 
@@ -1146,79 +1146,110 @@ body {
 }
 
 .result-item {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   background: var(--surface);
   border: 1px solid #f0c4ca;
   border-left: 4px solid var(--gov-red);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(200,16,46,0.07);
-  transition: box-shadow var(--t-base), transform var(--t-base);
+  box-shadow: 0 1px 6px rgba(200,16,46,0.06);
+  transition: box-shadow var(--t-base);
 }
 .result-item:hover {
-  box-shadow: 0 4px 18px rgba(200,16,46,0.13);
-  transform: translateY(-2px);
+  box-shadow: 0 3px 14px rgba(200,16,46,0.13);
 }
 .result-empty { padding: 14px 16px; font-size: 0.85rem; color: var(--text-secondary); }
 
 .result-card-name {
-  font-size: 1rem; font-weight: 700; color: #fff;
-  padding: 13px 16px 12px;
+  flex-shrink: 0;
+  width: 180px;
+  display: flex;
+  align-items: center;
+  font-size: 0.84rem; font-weight: 700; color: #fff;
+  padding: 10px 14px;
   background: var(--gov-red);
-  border-bottom: none;
+  border-right: 1px solid rgba(255,255,255,0.15);
   letter-spacing: 0.01em;
+  word-break: break-word;
+}
+
+/* Wrapper de campos — fila horizontal en desktop */
+.result-fields-wrap {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  min-width: 0;
+  border-right: 1px solid #fde8e8;
 }
 
 .result-field {
-  padding: 10px 16px; border-bottom: 1px solid #fde8e8;
+  padding: 7px 10px;
+  border-right: 1px solid #fde8e8;
   background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .result-field-label {
-  display: block; font-size: 0.68rem; font-weight: 700;
+  display: block; font-size: 0.59rem; font-weight: 700;
   color: var(--gov-red); text-transform: uppercase;
-  letter-spacing: 0.07em; margin-bottom: 2px;
+  letter-spacing: 0.07em; margin-bottom: 1px;
   opacity: 0.8;
 }
 
 .result-field-value {
-  display: block; font-size: 0.9rem; font-weight: 700;
+  display: block; font-size: 0.78rem; font-weight: 700;
   color: var(--text);
 }
 
 .result-card-footer {
-  padding: 12px 16px; display: flex; align-items: center;
-  flex-wrap: wrap; gap: 8px; background: #fff5f5;
-  border-top: 1px solid #fde8e8;
+  flex-shrink: 0;
+  width: 126px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
+  background: #fff5f5;
+  border-left: 1px solid #fde8e8;
 }
 
 .result-date {
-  font-size: 0.75rem; color: var(--text-secondary); flex: 1;
-  min-width: 130px;
+  font-size: 0.67rem; color: var(--text-secondary);
+  text-align: right;
 }
 
-.result-action-btns { display: flex; gap: 8px; }
+.result-action-btns { display: flex; flex-direction: column; gap: 5px; width: 100%; }
 
 .result-btn-edit {
-  padding: 7px 20px; border-radius: var(--r-full);
+  padding: 4px 8px; border-radius: var(--r-full);
   border: 1.5px solid var(--gov-blue); color: var(--gov-blue);
-  background: transparent; font-size: 0.82rem; font-weight: 600;
+  background: transparent; font-size: 0.73rem; font-weight: 600;
   cursor: pointer; transition: background var(--t-base), color var(--t-base);
+  text-align: center;
 }
 .result-btn-edit:hover { background: var(--gov-blue); color: #fff; }
 
 .result-btn-delete {
-  padding: 7px 20px; border-radius: var(--r-full);
+  padding: 4px 8px; border-radius: var(--r-full);
   border: 1.5px solid var(--gov-red); color: var(--gov-red);
-  background: transparent; font-size: 0.82rem; font-weight: 600;
+  background: transparent; font-size: 0.73rem; font-weight: 600;
   cursor: pointer; transition: background var(--t-base), color var(--t-base);
+  text-align: center;
 }
 .result-btn-delete:hover { background: var(--gov-red); border-color: var(--gov-red); color: #fff; }
 
 .result-category-badge {
-  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--gov-red);
   background: #fff; border: 1.5px solid #f5c0c0;
-  padding: 3px 10px; border-radius: var(--r-full);
+  padding: 2px 7px; border-radius: var(--r-full);
+  text-align: center;
 }
 
 /* ── 17. BADGE ────────────────────────────────────────── */
@@ -1651,10 +1682,78 @@ body.modal-open { overflow: hidden; }
   .user-item-fields { grid-template-columns: 1fr 1fr; gap: 10px; }
   .user-item-body { padding: 12px 12px 14px; }
 
-  /* Consulta — fichas en 1 columna en mobile */
+  /* Consulta — restaurar tarjetas en mobile */
   .search-results {
+    display: grid;
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .result-item {
+    flex-direction: column;
+    border-radius: var(--r-md);
+  }
+  .result-item:hover { box-shadow: 0 4px 18px rgba(200,16,46,0.13); }
+
+  .result-card-name {
+    width: auto;
+    font-size: 1rem;
+    padding: 13px 16px 12px;
+    border-right: none;
+    display: block;
+  }
+
+  /* En mobile el wrapper no altera el layout */
+  .result-fields-wrap {
+    display: contents;
+  }
+
+  .result-field {
+    padding: 10px 16px;
+    border-bottom: 1px solid #fde8e8;
+    border-right: none;
+    display: block;
+  }
+
+  .result-field-label { font-size: 0.68rem; margin-bottom: 2px; }
+  .result-field-value { font-size: 0.9rem; }
+
+  .result-card-footer {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px;
+    border-left: none;
+    border-top: 1px solid #fde8e8;
+  }
+
+  .result-date {
+    flex: 1;
+    min-width: 110px;
+    text-align: left;
+    font-size: 0.75rem;
+  }
+
+  .result-action-btns {
+    flex-direction: row;
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    gap: 8px;
+  }
+
+  .result-btn-edit, .result-btn-delete {
+    padding: 7px 16px;
+    font-size: 0.82rem;
+  }
+
+  .result-category-badge {
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    margin-left: 0;
   }
 
   .consulta-filter-grid {
@@ -1665,20 +1764,6 @@ body.modal-open { overflow: hidden; }
   .consulta-search-row {
     flex-direction: column;
     gap: 8px;
-  }
-
-  .result-card-footer {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .result-action-btns {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .result-category-badge {
-    margin-left: 0;
   }
 }
 
