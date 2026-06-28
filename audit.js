@@ -349,24 +349,38 @@
     });
   }
 
+  var DETAIL_LIMIT = 4;
+  var VAL_MAX     = 22;
+
   function safeDetails(raw) {
     if (!raw) return '<span class="audit-null">—</span>';
     try {
       var obj = JSON.parse(raw);
-      if (typeof obj === "string") return '<span class="audit-detail-text">' + esc(obj) + '</span>';
+      if (typeof obj === "string") {
+        var s = obj.length > 40 ? obj.slice(0, 38) + "…" : obj;
+        return '<span class="audit-detail-text">' + esc(s) + '</span>';
+      }
       var entries = Object.entries(obj).filter(function (kv) {
         return kv[1] !== null && kv[1] !== undefined && String(kv[1]).trim() !== "" && kv[1] !== "—";
       });
       if (!entries.length) return '<span class="audit-null">—</span>';
+      var shown   = entries.slice(0, DETAIL_LIMIT);
+      var extra   = entries.length - shown.length;
       return '<div class="audit-detail-grid">' +
-        entries.map(function (kv) {
+        shown.map(function (kv) {
+          var val = String(kv[1]);
+          if (val.length > VAL_MAX) val = val.slice(0, VAL_MAX - 1) + "…";
           return '<span class="audit-detail-item">' +
             '<span class="audit-detail-key">' + esc(kv[0]) + '</span>' +
-            '<span class="audit-detail-val">' + esc(String(kv[1])) + '</span>' +
+            '<span class="audit-detail-val">' + esc(val) + '</span>' +
           '</span>';
         }).join("") +
+        (extra > 0 ? '<span class="audit-detail-item audit-detail-more">+' + extra + ' más</span>' : '') +
       '</div>';
-    } catch (e) { return '<span class="audit-detail-text">' + esc(raw) + '</span>'; }
+    } catch (e) {
+      var s = String(raw); s = s.length > 40 ? s.slice(0, 38) + "…" : s;
+      return '<span class="audit-detail-text">' + esc(s) + '</span>';
+    }
   }
 
   /* Versión texto plano para exportar a Excel/PDF */

@@ -510,8 +510,11 @@ async function renderUsers() {
 }
 
 async function renderSearchResults() {
-  const ordered = (await getFilteredVoters())
-    .sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
+  const [filtered, allUsers] = await Promise.all([
+    getFilteredVoters(),
+    hasSuperAccess() ? getUsers() : Promise.resolve([])
+  ]);
+  const ordered = filtered.sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
   if (!DOM.searchResults) return;
   DOM.searchResults.innerHTML = '';
   if (!ordered.length) {
@@ -519,12 +522,20 @@ async function renderSearchResults() {
     return;
   }
 
+  const usersById = {};
+  allUsers.forEach(u => { usersById[u.id] = u; });
+
   const field = (label, value) => {
     if (!value) return '';
     return `<div class="result-field"><span class="result-field-label">${label}</span><span class="result-field-value">${escapeHtml(value)}</span></div>`;
   };
 
   ordered.forEach(v => {
+    const registrar = usersById[v.registered_by_id];
+    const regName   = registrar?.name     || v.registered_by_name || '—';
+    const regRole   = registrar?.role     || v.registered_by_role || '—';
+    const regUser   = registrar?.username || v.registered_by      || '—';
+
     const isOwner  = currentUser && v.registered_by_id === currentUser.id;
     const canEdit  = hasSuperAccess() || isOwner;
     const canDelete= hasSuperAccess();
@@ -554,7 +565,7 @@ async function renderSearchResults() {
         ${field('OBSERVACIÓN', v.observacion)}
         <div class="result-field">
           <span class="result-field-label">REGISTRADO POR</span>
-          <span class="result-field-value">${escapeHtml(v.registered_by_name)} · ${escapeHtml(v.registered_by_role)}</span>
+          <span class="result-field-value">${escapeHtml(regName)} · ${escapeHtml(regRole)}</span>
         </div>
       </div>
       <div class="result-card-footer">
