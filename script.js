@@ -549,7 +549,10 @@ async function renderSearchResults() {
     const item = document.createElement('div');
     item.className = 'result-item';
     item.innerHTML = `
-      <div class="result-card-name">${escapeHtml(v.name)}</div>
+      <div class="result-card-name">
+        <span class="result-category-badge">SIMPATIZANTE</span>
+        <span class="result-card-name-text">${escapeHtml(v.name)}</span>
+      </div>
       <div class="result-fields-wrap">
         ${field('CÉDULA', v.cedula)}
         ${field('EDAD', v.edad ? v.edad + ' años' : '')}
@@ -571,7 +574,6 @@ async function renderSearchResults() {
       <div class="result-card-footer">
         <span class="result-date">${escapeHtml(formatDateDisplay(v.updated_at || v.created_at))}</span>
         ${actionsHtml}
-        <span class="result-category-badge">SIMPATIZANTE</span>
       </div>
     `;
     DOM.searchResults.appendChild(item);
