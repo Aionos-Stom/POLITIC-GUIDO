@@ -1,25 +1,14 @@
 // ═══════════════════════════════════════════════════════════════
-//  
+//
 //   Supabase como base de datos pura (sin Supabase Auth).
-//   Hashing PBKDF2 vía Web Crypto API. Email con EmailJS.
+//   Hashing PBKDF2 vía Web Crypto API. Email vía Supabase Edge Function.
 // ═══════════════════════════════════════════════════════════════
-
-/* global emailjs */
 
 // ── Supabase client ────────────────────────────────────────────
 const SUPABASE_URL = 'https://smssamxuiksitmmfaosk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtc3NhbXh1aWtzaXRtbWZhb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzQ0MjcsImV4cCI6MjA5ODE1MDQyN30.5Ox_xo0FklquP4KNR--3rz2wVntDut7Rt0Wmp_7UzUE';
 window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var supabase = window.supabase;
-
-// ── EmailJS — configurar con tus credenciales ────────────────────
-// 1. Crea cuenta en https://www.emailjs.com (gratis)
-// 2. Crea un Email Service y un Email Template
-// 3. En el template usa las variables: {{to_name}}, {{to_email}}, {{reset_link}}
-const EMAILJS_SERVICE_ID  = 'service_ume7f0j';   // ← reemplazar
-const EMAILJS_TEMPLATE_ID = 'template_z5i2ula';  // ← reemplazar
-const EMAILJS_PUBLIC_KEY  = 'pYU3bNDgoNi5aknEv';    // ← 
-
 
 
 // Usuario autenticado en memoria
@@ -1146,25 +1135,28 @@ DOM.forgotForm?.addEventListener('submit', async function(e) {
     .update({ reset_token: token, reset_token_expires: expires })
     .eq('id', user.id);
 
-  // Enviar correo con EmailJS
+  // Enviar correo vía Supabase Edge Function (Gmail SMTP)
   const BASE_URL = window.location.origin.startsWith('file')
-    ? 'http://127.0.0.1:5500'          // Live Server local
-    : window.location.origin;           // producción automático
+    ? 'https://aionos-stom.github.io'
+    : window.location.origin;
 
   const resetLink = `${BASE_URL}${window.location.pathname}?reset_token=${token}`;
 
   try {
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      to_name:    user.name,
-      to_email:   user.email,
-      reset_link: resetLink,
-      expires_in: '1 hora'
-    }, EMAILJS_PUBLIC_KEY);
+    const { error: fnErr } = await supabase.functions.invoke('enviar-correo', {
+      body: {
+        to_email:   user.email,
+        to_name:    user.name,
+        reset_link: resetLink,
+        expires_in: '1 hora'
+      }
+    });
+    if (fnErr) throw fnErr;
 
     showMessage(DOM.forgotMessage, 'Correo enviado. Revise su bandeja de entrada.', 'success');
     setTimeout(closeForgotModal, 3200);
   } catch (emailErr) {
-    console.error('EmailJS error:', emailErr);
+    console.error('Error enviando correo:', emailErr);
     showMessage(DOM.forgotMessage, 'Error al enviar el correo. Intente más tarde.', 'error');
   }
 });
