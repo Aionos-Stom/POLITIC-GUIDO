@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>GUIDO — Sistema de Gestión Territorial</title>
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#071a44" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -13,7 +12,6 @@
   <meta name="apple-mobile-web-app-title" content="GUIDO" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="apple-touch-icon" sizes="180x180" href="Logos/c3380bdf-93e0-4617-a452-797675ce82be.jpeg" />
-  <!-- Favicon -->
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="icon" href="Logos/c3380bdf-93e0-4617-a452-797675ce82be.jpeg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -27,16 +25,11 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════
-     AUTH SECTION — Full-Page Split Design
-═══════════════════════════════════════════════════════ -->
 <section id="authSection" role="main">
-
-  <!-- ─── LEFT PANEL — Brand / Hero ─────────────────── -->
   <div class="auth-side" aria-hidden="true">
     <div class="auth-side-inner">
 
-      <!-- Hero central -->
+      
       <div class="auth-hero">
         <div class="auth-hero-center">
           <div class="auth-hero-logo">
@@ -48,10 +41,9 @@
         </div>
       </div>
 
-    </div><!-- /auth-side-inner -->
-  </div><!-- /auth-side -->
+    </div>
+  </div>
 
-  <!-- ─── RIGHT PANEL — Forms ────────────────────────── -->
   <div class="auth-main">
     <div class="auth-main-inner">
 
@@ -64,13 +56,13 @@
         <p>Ingrese sus credenciales para acceder al panel de gestión territorial.</p>
       </div>
 
-      <!-- TABS -->
+      
       <div class="tabs" role="tablist">
         <button class="tab active" id="showLogin" type="button" role="tab" aria-selected="true">Iniciar sesión</button>
         <button class="tab" id="showRegister" type="button" role="tab" aria-selected="false">Registrar usuario</button>
       </div>
 
-      <!-- LOGIN FORM -->
+      
       <form id="loginForm" class="form active" novalidate>
 
         <div class="input-group">
@@ -95,7 +87,7 @@
         <p class="helper-text" style="margin-top:4px">Acceso permitido solo para usuarios autorizados y aprobados.</p>
       </form>
 
-      <!-- REGISTER FORM -->
+      
       <form id="registerForm" class="form" novalidate>
         <div class="form-head">
           <h2 id="registerFormTitle" style="font-size:1rem">Crear nuevo usuario</h2>
@@ -182,7 +174,7 @@
 
       <div class="status-message" id="authMessage" role="alert" aria-live="polite"></div>
 
-    </div><!-- /auth-main-inner -->
+    </div>
 
     <footer class="auth-footer">
       <div class="auth-footer-secure">
@@ -195,16 +187,10 @@
 
 </section>
 
-
-<!-- ══════════════════════════════════════════════════════
-     APP SHELL (Dashboard)
-═══════════════════════════════════════════════════════ -->
 <div class="app-shell hidden" id="dashboardSection">
 
-  <!-- Sidebar overlay (mobile) -->
   <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
 
-  <!-- ── SIDEBAR ─────────────────────────────────────── -->
   <aside class="sidebar" id="appSidebar" role="navigation" aria-label="Navegación principal">
     <div class="sidebar-header">
       <div class="sidebar-logo">
@@ -218,7 +204,6 @@
 
     <nav class="sidebar-nav">
 
-      <!-- Grupo: Panel principal -->
       <div class="nav-group-header open" data-target="navGroupMain" role="button" tabindex="0" aria-expanded="true">
         <span>Panel principal</span>
         <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
@@ -238,7 +223,6 @@
         </button>
       </div>
 
-      <!-- Grupo: Administración -->
       <div class="nav-group-header open" data-target="navGroupAdmin" role="button" tabindex="0" aria-expanded="true">
         <span>Administración</span>
         <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
@@ -265,12 +249,9 @@
         </div>
       </div>
     </div>
-  </aside>
+  </aside>  <div class="app-main">
 
-  <!-- ── MAIN AREA ───────────────────────────────────── -->
-  <div class="app-main">
-
-    <!-- TOPBAR -->
+    
     <header class="topbar" role="banner">
       <div class="topbar-left">
         <button class="sidebar-toggle" id="sidebarToggleBtn" type="button" aria-label="Abrir menú" aria-expanded="false">
@@ -303,17 +284,12 @@
       </div>
     </header>
 
-    <!-- MAIN CONTENT -->
-    <main class="app-content" id="appContent">
+    
+    <main class="app-content" id="appContent">      <p id="currentUserInfo" style="display:none"></p>
 
-      <!-- ─ USER INFO BADGE ──────────────────────────── -->
-      <p id="currentUserInfo" style="display:none"></p>
-
-      <!-- ════════════════════════════════════════════
-           PANEL: RESUMEN (overview)
-      ═══════════════════════════════════════════════ -->
+      
       <section class="content-panel" id="panelOverview">
-        <!-- Stats -->
+        
         <section class="stats-grid" aria-label="Métricas principales">
           <article class="stat-card">
             <div class="stat-card-icon">
@@ -352,7 +328,7 @@
           </article>
         </section>
 
-        <!-- Analytics -->
+        
         <section class="analytics-grid" aria-label="Análisis territorial">
           <div class="card chart-card">
             <div class="card-header row-between">
@@ -377,9 +353,7 @@
         </section>
       </section>
 
-      <!-- ════════════════════════════════════════════
-           PANEL: NUEVO REGISTRO
-      ═══════════════════════════════════════════════ -->
+      
       <section class="content-panel" id="panelRegistro">
         <div class="panel-heading">
           <div class="panel-heading-text">
@@ -482,9 +456,7 @@
         </div>
       </section>
 
-      <!-- ════════════════════════════════════════════
-           PANEL: CONSULTA AVANZADA
-      ═══════════════════════════════════════════════ -->
+      
       <section class="content-panel" id="panelConsulta">
         <div class="panel-heading row-between">
           <div class="panel-heading-text">
@@ -494,7 +466,7 @@
           <span class="badge" id="filteredCountBadge">0 resultados</span>
         </div>
 
-        <!-- Filtros avanzados -->
+        
         <div class="card consulta-filters-card">
           <div class="consulta-search-row">
             <div class="input-group" style="flex:1; margin-bottom:0;">
@@ -534,17 +506,15 @@
           </div>
         </div>
 
-        <!-- Resultados en fichas -->
+        
         <div class="search-results" id="searchResults" role="list" aria-live="polite" aria-label="Resultados de consulta"></div>
 
-        <!-- Tabla oculta — requerida por renderVotersTable() -->
+        
         <table style="display:none"><tbody id="votersTableBody"></tbody></table>
         <span style="display:none" id="voterActionsHead"></span>
       </section>
 
-      <!-- ════════════════════════════════════════════
-           PANEL: USUARIOS
-      ═══════════════════════════════════════════════ -->
+      
       <section class="card users-card section-hidden" id="usersSection">
         <div class="card-header row-between">
           <div>
@@ -557,9 +527,7 @@
         <div id="usersListContainer" class="users-list"></div>
       </section>
 
-      <!-- ════════════════════════════════════════════
-           PANEL: AUDITORÍA (solo Administrador)
-      ═══════════════════════════════════════════════ -->
+      
       <section class="card audit-card section-hidden" id="panelAudit" aria-label="Historial de auditoría">
         <div class="card-header row-between">
           <div>
@@ -571,11 +539,9 @@
             Exportar historial
           </button>
         </div>
-
-        <!-- Stat cards -->
         <div class="audit-stats" id="auditStats"></div>
 
-        <!-- Filtros -->
+        
         <div class="audit-filters">
           <input type="search" id="auditSearch" placeholder="Buscar actor, objetivo, detalles…" aria-label="Buscar en el historial" />
           <select id="auditFilterAction" aria-label="Filtrar por tipo de acción">
@@ -598,8 +564,6 @@
           <input type="date" id="auditFilterFrom" aria-label="Fecha desde" title="Fecha desde" />
           <input type="date" id="auditFilterTo" aria-label="Fecha hasta" title="Fecha hasta" />
         </div>
-
-        <!-- Tabla -->
         <div class="table-wrap table-wrap-fixed">
           <table role="grid" aria-label="Historial de auditoría">
             <thead>
@@ -615,19 +579,13 @@
             <tbody id="auditTableBody"></tbody>
           </table>
         </div>
-
-        <!-- Paginación -->
         <div class="audit-pagination" id="auditPagination"></div>
       </section>
 
-    </main><!-- /app-content -->
-  </div><!-- /app-main -->
-</div><!-- /app-shell -->
+    </main>
+  </div>
+</div>
 
-
-<!-- ══════════════════════════════════════════════════════
-     MODAL: EDITAR USUARIO
-═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="userEditModal" role="dialog" aria-modal="true" aria-labelledby="userEditModalTitle">
   <div class="modal-card">
     <div class="modal-header">
@@ -711,9 +669,6 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: RECUPERAR CONTRASEÑA
-═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="forgotPasswordModal" role="dialog" aria-modal="true" aria-labelledby="forgotPasswordModalTitle">
   <div class="modal-card" style="max-width:440px">
     <div class="modal-header">
@@ -740,9 +695,6 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: NUEVA CONTRASEÑA (retorno desde email)
-═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="resetPasswordModal" role="dialog" aria-modal="true" aria-labelledby="resetPasswordModalTitle">
   <div class="modal-card" style="max-width:440px">
     <div class="modal-header">
@@ -750,6 +702,7 @@
         <h3 id="resetPasswordModalTitle">Establecer nueva contraseña</h3>
         <p>Ingrese y confirme su nueva contraseña para continuar.</p>
       </div>
+      <button type="button" class="modal-close-btn" id="closeResetModalBtn" aria-label="Cerrar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <form id="resetForm" novalidate style="margin-top:16px">
       <div class="input-group">
@@ -771,12 +724,8 @@
   </div>
 </div>
 
-<!-- Notification container -->
 <div id="notifContainer" aria-live="polite" aria-label="Notificaciones"></div>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: CONFIRMACIÓN PERSONALIZADA
-═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="confirmModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle">
   <div class="modal-card custom-dialog-card">
     <div class="custom-dialog-top">
@@ -793,9 +742,6 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: ALERTA / AVISO PERSONALIZADA
-═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="alertModal" role="alertdialog" aria-modal="true" aria-labelledby="alertModalTitle">
   <div class="modal-card custom-dialog-card">
     <div class="custom-dialog-top">
@@ -811,9 +757,6 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: SIMPATIZANTE DUPLICADO
-═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="duplicateVoterModal" role="alertdialog" aria-modal="true" aria-labelledby="dupVoterTitle">
   <div class="modal-card dup-voter-card">
     <div class="dup-voter-header">
@@ -832,9 +775,6 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     FOOTER GLOBAL
-═══════════════════════════════════════════════════════ -->
 <footer class="site-footer" role="contentinfo">
   <div class="footer-topband"></div>
   <div class="footer-bottom">
@@ -849,9 +789,6 @@
   </div>
 </footer>
 
-<!-- ══════════════════════════════════════════════════════
-     PWA — BANNER INSTALACIÓN (Android + iOS)
-═══════════════════════════════════════════════════════ -->
 <div id="pwaInstallBanner" class="pwa-banner" hidden role="dialog" aria-label="Instalar aplicación GUIDO">
   <div class="pwa-banner-body">
     <img src="icons/icon.svg" alt="GUIDO" class="pwa-banner-icon" />
@@ -881,7 +818,6 @@
   </button>
 </div>
 
-<!-- Scripts -->
 <script src="audit.js" defer></script>
 <script src="ui.js" defer></script>
 <script src="script.js" defer></script>

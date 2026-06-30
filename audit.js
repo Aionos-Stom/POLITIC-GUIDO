@@ -1,8 +1,3 @@
-/* =========================================================
-   AUDIT.JS — Historial de actividad del sistema
-   Solo visible para el Administrador.
-   ========================================================= */
-
 (function () {
   "use strict";
 
@@ -10,7 +5,6 @@
   var _page     = 1;
   var _allLogs  = [];
 
-  // ── Metadatos de acciones ─────────────────────────────────
   var ACTION_META = {
     SESSION_LOGIN:   { label: "Inicio de sesión",                  badge: "success", objetivo: "Acceso al sistema"          },
     SESSION_LOGOUT:  { label: "Cierre de sesión",                  badge: "info",    objetivo: "Salida del sistema"         },
@@ -26,10 +20,8 @@
     VOTER_DUPLICATE: { label: "Intento de cédula duplicada",       badge: "danger",  objetivo: "Control de integridad"      },
   };
 
-  // ── DOM ───────────────────────────────────────────────────
   function el(id) { return document.getElementById(id); }
 
-  // ── Insertar log ──────────────────────────────────────────
   window.logAudit = function (action, targetId, targetName, details) {
     try {
       var session = window.getSession ? window.getSession() : null;
@@ -47,7 +39,6 @@
       if (window.supabase) {
         window.supabase.from("audit_logs").insert(entry).then(function (res) {
           if (res.error) console.warn("logAudit insert:", res.error.message);
-          // Si el panel está visible, refrescar
           var panel = el("panelAudit");
           if (panel && !panel.classList.contains("section-hidden")) {
             fetchAndRenderAudit();
@@ -57,7 +48,6 @@
     } catch (e) { console.warn("logAudit:", e); }
   };
 
-  // ── Obtener todos los logs ────────────────────────────────
   window.getAuditLog = async function () {
     try {
       var res = await supabase
@@ -68,7 +58,6 @@
     } catch (e) { return []; }
   };
 
-  // ── Actualizar visibilidad (llamado desde ui.js) ──────────
   window.updateAuditAccess = function () {
     var canAccess = typeof window.hasSuperAccess === "function" && window.hasSuperAccess();
     var navBtn  = el("navAuditBtn");
@@ -77,7 +66,6 @@
     if (canAccess) {
       navBtn  && navBtn.classList.remove("section-hidden");
       panel   && panel.classList.remove("section-hidden");
-      // Cargar datos la primera vez
       if (_allLogs.length === 0) fetchAndRenderAudit();
     } else {
       navBtn  && navBtn.classList.add("section-hidden");
@@ -85,7 +73,6 @@
     }
   };
 
-  // ── Fetch + render ────────────────────────────────────────
   async function fetchAndRenderAudit() {
     _allLogs = await window.getAuditLog();
     _page    = 1;
@@ -94,7 +81,6 @@
     renderAuditTable();
   }
 
-  // ── Stats cards ───────────────────────────────────────────
   function renderAuditStats() {
     var container = el("auditStats");
     if (!container) return;
@@ -126,7 +112,6 @@
     '</div>';
   }
 
-  // ── Poblar filtro de actores ──────────────────────────────
   function populateActorFilter() {
     var sel = el("auditFilterActor");
     if (!sel) return;
@@ -142,7 +127,6 @@
     if (actors.includes(cur)) sel.value = cur;
   }
 
-  // ── Filtrar logs ──────────────────────────────────────────
   function filteredLogs() {
     var q      = (el("auditSearch")       ?.value.trim().toLowerCase()) || "";
     var action = (el("auditFilterAction") ?.value) || "";
@@ -166,7 +150,6 @@
     });
   }
 
-  // ── Render tabla ──────────────────────────────────────────
   function renderAuditTable() {
     var tbody = el("auditTableBody");
     if (!tbody) return;
@@ -207,7 +190,6 @@
     renderPagination(total, pages);
   }
 
-  // ── Paginación ────────────────────────────────────────────
   function renderPagination(total, pages) {
     var pag = el("auditPagination");
     if (!pag) return;
@@ -258,7 +240,6 @@
     return pages;
   }
 
-  // ── Exportar ──────────────────────────────────────────────
   window.exportAuditLog = async function () {
     var log = await window.getAuditLog();
     if (!log.length) { if (typeof window.showAlert === "function") { await window.showAlert("Sin datos", "No hay datos para exportar.", "info"); } return; }
@@ -277,7 +258,6 @@
       ];
     });
 
-    // Excel
     var wb = XLSX.utils.book_new();
     var ws = XLSX.utils.aoa_to_sheet([
       ["HISTORIAL DE AUDITORÍA — GUIDO · Siempre cerca de ti"],
@@ -288,7 +268,6 @@
     XLSX.utils.book_append_sheet(wb, ws, "Auditoría");
     XLSX.writeFile(wb, "auditoria_" + new Date().toISOString().slice(0,10) + ".xlsx");
 
-    // PDF
     try {
       var doc = new window.jspdf.jsPDF();
       doc.setFillColor(7, 26, 68);
@@ -313,10 +292,7 @@
     window.logAudit("DATA_EXPORT", null, "Auditoría", "Exportación del historial");
   };
 
-  // ── Wiring de eventos ─────────────────────────────────────
   document.addEventListener("DOMContentLoaded", function () {
-
-    // Filtros → re-render
     ["auditSearch","auditFilterAction","auditFilterActor","auditFilterFrom","auditFilterTo"]
       .forEach(function (id) {
         var node = el(id);
@@ -325,13 +301,11 @@
         node.addEventListener("change", function () { _page = 1; renderAuditTable(); });
       });
 
-    // Exportar
     var exportBtn = el("auditExportBtn");
     if (exportBtn) {
       exportBtn.addEventListener("click", function () { window.exportAuditLog(); });
     }
 
-    // Recargar al hacer clic en nav
     var navBtn = el("navAuditBtn");
     if (navBtn) {
       navBtn.addEventListener("click", function () {
@@ -340,7 +314,6 @@
     }
   });
 
-  // ── Helpers ───────────────────────────────────────────────
   function formatTs(iso) {
     if (!iso) return "—";
     return new Date(iso).toLocaleString("es-DO", {
@@ -361,7 +334,6 @@
     }
     if (typeof obj !== "object" || obj === null) obj = {};
 
-    // ── EDICIÓN: mostrar diff antes → después ─────────────
     if (obj.tipo === "edicion" && Array.isArray(obj.cambios)) {
       var cambios = obj.cambios.filter(function(c) { return c && c.campo; });
       if (!cambios.length) return '<span class="audit-null">Sin cambios</span>';
@@ -380,7 +352,6 @@
       '</details>';
     }
 
-    // ── REGISTRO / ELIMINACIÓN: mostrar datos clave ───────
     if (obj.tipo === "eliminacion" || obj.tipo === "registro") {
       var entries = Object.entries(obj).filter(function(kv) {
         return kv[0] !== "tipo" && kv[1] && kv[1] !== "—";
@@ -399,7 +370,6 @@
       '</details>';
     }
 
-    // ── FALLBACK: registros antiguos sin campo "tipo" ─────
     var parts = [];
     switch (action) {
       case "SESSION_LOGIN": case "SESSION_LOGOUT":
@@ -434,7 +404,6 @@
     return '<span class="audit-detail-text">' + parts.map(esc).join(" · ") + '</span>';
   }
 
-  /* Versión texto plano para exportar a Excel/PDF */
   function safeDetailsPlain(raw) {
     if (!raw) return "—";
     try {
@@ -453,7 +422,6 @@
       .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
-  // ── Iconos SVG ────────────────────────────────────────────
   function iconActivity() {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
   }

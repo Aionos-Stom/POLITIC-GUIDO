@@ -116,12 +116,12 @@ const DOM = {
   forgotForm:             document.getElementById('forgotForm'),
   forgotEmail:            document.getElementById('forgotEmail'),
   forgotMessage:          document.getElementById('forgotMessage'),
-  // Reset de contraseña
   resetPasswordModal:     document.getElementById('resetPasswordModal'),
   resetForm:              document.getElementById('resetForm'),
   resetPassword:          document.getElementById('resetPassword'),
   resetPasswordConfirm:   document.getElementById('resetPasswordConfirm'),
   resetMessage:           document.getElementById('resetMessage'),
+  closeResetModalBtn:     document.getElementById('closeResetModalBtn'),
 };
 
 // ── Constantes ──────────────────────────────────────────────────
@@ -1105,6 +1105,8 @@ DOM.forgotPasswordBtn?.addEventListener('click', openForgotModal);
 DOM.closeForgotModalBtn?.addEventListener('click', closeForgotModal);
 DOM.cancelForgotBtn?.addEventListener('click',    closeForgotModal);
 DOM.forgotPasswordModal?.addEventListener('click', e => { if (e.target === DOM.forgotPasswordModal) closeForgotModal(); });
+DOM.closeResetModalBtn?.addEventListener('click', closeResetModal);
+DOM.resetPasswordModal?.addEventListener('click', e => { if (e.target === DOM.resetPasswordModal) closeResetModal(); });
 
 DOM.forgotForm?.addEventListener('submit', async function(e) {
   e.preventDefault();
