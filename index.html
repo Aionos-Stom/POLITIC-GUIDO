@@ -2,8 +2,19 @@
 <html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>GUIDO — Sistema de Gestión Territorial</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#071a44" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GUIDO" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="Logos/c3380bdf-93e0-4617-a452-797675ce82be.jpeg" />
+  <!-- Favicon -->
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="icon" href="Logos/c3380bdf-93e0-4617-a452-797675ce82be.jpeg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -838,6 +849,38 @@
     </div>
   </div>
 </footer>
+
+<!-- ══════════════════════════════════════════════════════
+     PWA — BANNER INSTALACIÓN (Android + iOS)
+═══════════════════════════════════════════════════════ -->
+<div id="pwaInstallBanner" class="pwa-banner" hidden role="dialog" aria-label="Instalar aplicación GUIDO">
+  <div class="pwa-banner-body">
+    <img src="icons/icon.svg" alt="GUIDO" class="pwa-banner-icon" />
+    <div class="pwa-banner-info">
+      <b>GUIDO — Siempre cerca de ti</b>
+      <span>Instala la app · acceso rápido y sin internet</span>
+    </div>
+  </div>
+  <div class="pwa-banner-btns">
+    <button id="pwaInstallBtn" class="pwa-btn-accept">Instalar</button>
+    <button id="pwaDismissBtn" class="pwa-btn-dismiss" aria-label="No ahora">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
+<div id="iosInstallBanner" class="pwa-banner pwa-ios-banner" hidden role="dialog" aria-label="Instrucciones iOS">
+  <div class="pwa-banner-body">
+    <img src="icons/icon.svg" alt="GUIDO" class="pwa-banner-icon" />
+    <div class="pwa-banner-info">
+      <b>Agregar a inicio — iPhone / iPad</b>
+      <span>Toca <strong>Compartir</strong> <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px" aria-hidden="true"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> y luego <strong>"Añadir a inicio"</strong></span>
+    </div>
+  </div>
+  <button id="iosDismissBtn" class="pwa-btn-dismiss" aria-label="Cerrar">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
 
 <!-- Scripts -->
 <script src="audit.js" defer></script>

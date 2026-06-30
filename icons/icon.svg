@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fondo navy -->
+  <rect width="512" height="512" rx="90" fill="#071a44"/>
+  <!-- Letra G -->
+  <text x="256" y="318" font-family="Arial Black,Arial,sans-serif" font-size="264" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="auto">G</text>
+  <!-- Barra roja inferior -->
+  <rect x="56" y="396" width="400" height="16" rx="8" fill="#c8102e"/>
+  <!-- Punto decorativo rojo -->
+  <circle cx="256" cy="448" r="10" fill="#c8102e" opacity="0.6"/>
+</svg>

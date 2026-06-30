@@ -2316,6 +2316,66 @@ details[open] .audit-expand-summary::before { content: '▾ '; }
   .custom-dialog-ok, #confirmModalCancelBtn { width: 100%; justify-content: center; }
 }
 
+/* ── 28. PWA INSTALL BANNER ──────────────────────────── */
+.pwa-banner {
+  position: fixed;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px); max-width: 520px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--gov-red);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  box-shadow: 0 8px 36px rgba(7,26,68,0.18);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  animation: slideUp 0.32s cubic-bezier(.22,.68,0,1.2);
+}
+.pwa-banner[hidden] { display: none !important; }
+.pwa-banner-body {
+  display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
+}
+.pwa-banner-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(7,26,68,0.2);
+}
+.pwa-banner-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pwa-banner-info b { font-size: 0.84rem; color: var(--text); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pwa-banner-info span { font-size: 0.73rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pwa-banner-btns { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pwa-btn-accept {
+  padding: 9px 22px; border-radius: var(--r-full);
+  background: var(--gov-red); color: #fff; border: none;
+  font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  transition: background var(--t-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.pwa-btn-accept:hover { background: var(--gov-red-hover); }
+.pwa-btn-dismiss {
+  width: 32px; height: 32px; border-radius: var(--r-full);
+  background: var(--bg-subtle); color: var(--text-muted);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background var(--t-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.pwa-btn-dismiss:hover { background: var(--border); }
+
+.pwa-ios-banner {
+  border-top-color: #071a44;
+}
+.pwa-ios-banner .pwa-banner-info b { color: var(--text); }
+
+@media (max-width: 400px) {
+  .pwa-banner { padding: 12px 14px; bottom: 12px; }
+  .pwa-banner-info b { font-size: 0.8rem; }
+  .pwa-banner-info span { font-size: 0.7rem; }
+  .pwa-btn-accept { padding: 8px 16px; font-size: 0.78rem; }
+}
+
 /* ── 27. SMOOTH THEME TRANSITIONS ────────────────────── */
 body, .sidebar, .topbar, .card, .stat-card, .modal-card,
 .auth-main, .auth-side, input, select, textarea,

@@ -1158,7 +1158,7 @@ DOM.forgotForm?.addEventListener('submit', async function(e) {
       to_name:    user.name,
       to_email:   user.email,
       reset_link: resetLink,
-      expires_in: '30 minutos'
+      expires_in: '1 hora'
     }, EMAILJS_PUBLIC_KEY);
 
     showMessage(DOM.forgotMessage, 'Correo enviado. Revise su bandeja de entrada.', 'success');
@@ -1866,4 +1866,87 @@ function showAlert(title, message, type = 'info') {
   }
 
   showAuth();
+})();
+
+/* ── PWA — Service Worker + Banners de instalación ──────────── */
+(function () {
+  'use strict';
+
+  /* 1 · Registrar Service Worker */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/guido-sistema/sw.js')
+        .then(function (r) { console.info('[SW] Registrado · scope:', r.scope); })
+        .catch(function (e) { console.warn('[SW] Error al registrar:', e); });
+    });
+  }
+
+  /* 2 · Detectar si ya está instalado */
+  var isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  /* No mostrar banners si ya está instalado o si el usuario ya lo descartó */
+  if (isStandalone || localStorage.getItem('pwa_dismissed')) return;
+
+  var installBanner = document.getElementById('pwaInstallBanner');
+  var iosBanner     = document.getElementById('iosInstallBanner');
+  var deferredEvt   = null;
+
+  /* 3 · Android / Chrome: capturar evento de instalación */
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredEvt = e;
+    if (installBanner) installBanner.hidden = false;
+  });
+
+  /* Botón "Instalar" */
+  var btnInstall = document.getElementById('pwaInstallBtn');
+  if (btnInstall) {
+    btnInstall.addEventListener('click', async function () {
+      if (!deferredEvt) return;
+      deferredEvt.prompt();
+      var result = await deferredEvt.userChoice;
+      installBanner.hidden = true;
+      deferredEvt = null;
+      if (result.outcome === 'accepted') {
+        localStorage.setItem('pwa_dismissed', '1');
+      }
+    });
+  }
+
+  /* Botón "No ahora" (Android) */
+  var btnDismiss = document.getElementById('pwaDismissBtn');
+  if (btnDismiss) {
+    btnDismiss.addEventListener('click', function () {
+      installBanner.hidden = true;
+      localStorage.setItem('pwa_dismissed', '1');
+    });
+  }
+
+  /* 4 · iOS Safari: mostrar instrucciones manuales */
+  var isIosSafari =
+    /ipad|iphone|ipod/i.test(navigator.userAgent) &&
+    !window.MSStream &&
+    !/crios|fxios|opios/i.test(navigator.userAgent); /* no Chrome/Firefox iOS */
+
+  if (isIosSafari && !isStandalone && iosBanner) {
+    setTimeout(function () { iosBanner.hidden = false; }, 2800);
+  }
+
+  /* Botón "Cerrar" (iOS) */
+  var btnIosDismiss = document.getElementById('iosDismissBtn');
+  if (btnIosDismiss) {
+    btnIosDismiss.addEventListener('click', function () {
+      iosBanner.hidden = true;
+      localStorage.setItem('pwa_dismissed', '1');
+    });
+  }
+
+  /* 5 · Marcar como instalado al completarse */
+  window.addEventListener('appinstalled', function () {
+    if (installBanner) installBanner.hidden = true;
+    deferredEvt = null;
+    localStorage.setItem('pwa_dismissed', '1');
+  });
 })();

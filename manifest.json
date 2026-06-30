@@ -1,0 +1,29 @@
+{
+  "name": "GUIDO — Siempre cerca de ti",
+  "short_name": "GUIDO",
+  "description": "Sistema Nacional de Gestión Territorial · República Dominicana",
+  "lang": "es-DO",
+  "start_url": "/guido-sistema/",
+  "scope": "/guido-sistema/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#071a44",
+  "theme_color": "#071a44",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "Logos/c3380bdf-93e0-4617-a452-797675ce82be.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
