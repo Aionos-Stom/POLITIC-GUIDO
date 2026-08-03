@@ -1869,7 +1869,7 @@ function showAlert(title, message, type = 'info') {
   /* 1 · Registrar Service Worker */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('/guido-sistema/sw.js')
+      navigator.serviceWorker.register('sw.js')
         .then(function (r) { console.info('[SW] Registrado · scope:', r.scope); })
         .catch(function (e) { console.warn('[SW] Error al registrar:', e); });
     });

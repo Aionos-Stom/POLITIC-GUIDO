@@ -4,7 +4,7 @@
    ========================================================= */
 
 const CACHE_NAME = 'guido-v1';
-const BASE = '/guido-sistema';
+const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
 
 const ASSETS = [
   BASE + '/',
