@@ -8,16 +8,16 @@ const source=fs.readFileSync(new URL('../data-api-client.js',import.meta.url),'u
 async function client(options={}) {
   const f=await fixture(),events=[],requests=[],storage=new Map();
   let legacyCalls=0;
-  const window={dispatchEvent:event=>events.push(event.type)};
+  const window={dispatchEvent:event=>events.push(event.type)}, discoveryCalls=[];
   const context=vm.createContext({window,URL,AbortController,setTimeout,clearTimeout,Event,sessionStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},fetch:async(url,init)=>{
     const body=JSON.parse(init.body);requests.push(body);
     if(body.action==='health'&&options.health) return options.health();
     return f.handler(new Request(url,init));
   }});
   vm.runInContext(source,context);
-  const wrapped=window.GuidoBackend.wrap({from(){legacyCalls++;return {select:async()=>({data:[{legacy:true}],error:null})};}},{url:'https://example.invalid',key:'public-test-key'});
+  const wrapped=window.GuidoBackend.wrap({from(){legacyCalls++;return {select:async()=>({data:[{legacy:true}],error:null})};},rpc:async(...args)=>{discoveryCalls.push(args);return options.discovery ? options.discovery() : {data:null,error:{code:'UNAVAILABLE'}};}},{url:'https://example.invalid',key:'public-test-key'});
   await window.GuidoBackend.ready;
-  return {...f,backend:window.GuidoBackend,wrapped,events,requests,storage,get legacyCalls(){return legacyCalls;}};
+  return {...f,backend:window.GuidoBackend,wrapped,events,requests,storage,discoveryCalls,get legacyCalls(){return legacyCalls;}};
 }
 test('el cliente usa el API real, conserva un token opaco y deriva el mapa de la sesión',async()=>{
  const f=await client();assert.equal(f.backend.mode(),'api');
@@ -35,7 +35,7 @@ test('una sesión revocada borra el token y comunica la caducidad',async()=>{
  assert.equal(f.storage.size,0);assert.deepEqual(f.events,['guido:session-expired']);assert.equal(f.legacyCalls,0);
 });
 test('404 explícito conserva el acceso heredado antes del despliegue',async()=>{
- const f=await client({health:()=>new Response('{}',{status:404})});
+ const f=await client({health:()=>new Response('{}',{status:404}),discovery:()=>({data:null,error:{code:'PGRST202'},status:404})});
  assert.equal(f.backend.mode(),'legacy');const result=await f.wrapped.from('users').select('*');assert.equal(result.data[0].legacy,true);
 });
 test('un backend preparado e inactivo conserva el modo heredado',async()=>{
@@ -46,6 +46,26 @@ test('errores de red o respuestas inválidas no abren el acceso heredado',async(
  for(const health of [()=>{throw Error('offline');},()=>Response.json({unknown:true}),()=>new Response('{}',{status:503})]) {
   const f=await client({health});assert.equal(f.backend.mode(),'unavailable');
   assert.ok((await f.wrapped.from('users').select('*')).error);assert.equal(f.legacyCalls,0);
+ }
+});
+test('un preflight 404 oculto por CORS conserva el acceso si PostgREST confirma que falta el esquema nuevo',async()=>{
+ const f=await client({health:()=>{throw new TypeError('Failed to fetch');},discovery:()=>({data:null,error:{code:'PGRST202'},status:404})});
+ assert.equal(f.backend.mode(),'legacy');assert.equal(f.legacyCalls,0);
+ assert.deepEqual(f.discoveryCalls,[['guido_backend_status']]);
+ assert.equal((await f.wrapped.from('users').select('*')).data[0].legacy,true);
+});
+test('el estado inactivo confirmado por la base permite continuar antes de activar el API',async()=>{
+ const f=await client({health:()=>{throw Error('CORS');},discovery:()=>({data:{version:1,enabled:false,protected:false},error:null})});
+ assert.equal(f.backend.mode(),'legacy');assert.equal(f.legacyCalls,0);
+});
+test('un API activado que falla por CORS nunca vuelve al acceso directo',async()=>{
+ const f=await client({health:()=>{throw Error('CORS');},discovery:()=>({data:{version:1,enabled:true,protected:true},error:null})});
+ assert.equal(f.backend.mode(),'unavailable');assert.ok((await f.wrapped.from('users').select('*')).error);assert.equal(f.legacyCalls,0);
+});
+test('la detección no interpreta errores de permisos o de red como un esquema heredado',async()=>{
+ for(const discovery of [()=>({data:null,error:{code:'42501'},status:403}),()=>({data:null,error:{message:'Failed to fetch'}}),()=>{throw Error('offline');}]) {
+  const f=await client({health:()=>{throw Error('CORS');},discovery});
+  assert.equal(f.backend.mode(),'unavailable');assert.equal(f.legacyCalls,0);
  }
 });
 test('el correo restringe destinatario, enlace y marcado HTML',()=>{

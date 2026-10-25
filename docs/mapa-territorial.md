@@ -22,7 +22,7 @@ El cliente envía `X-Guido-Session`. Nunca decide el actor ni el alcance mediant
 
 La llamada del mapa se transforma en la acción `map`. El backend deriva el actor de la sesión y ejecuta `guido_territory_map(uuid)`, que solo puede invocar `service_role`. El navegador recibe zonas y cantidades agregadas, sin nombres, teléfonos ni cédulas. Las credenciales privadas permanecen en el runtime de Supabase.
 
-El cliente mantiene el modo heredado únicamente si el endpoint devuelve 404 o confirma expresamente que el cambio de acceso sigue inactivo. Un fallo de red o una respuesta inválida cierra el acceso; no activa una alternativa sin protección. Tras el corte, el frontend antiguo tampoco podrá acceder directamente a las tablas.
+El cliente mantiene el modo heredado si el servidor confirma que el cambio de acceso sigue inactivo. Cuando el endpoint Edge falla, consulta el estado por PostgREST: solo acepta una confirmación de modo inactivo o el error específico de función ausente del esquema anterior (`PGRST202`). Un fallo de red aislado, un error de permisos o un backend activado que no responde mantienen cerrado el acceso. Tras el corte, el frontend antiguo tampoco podrá acceder directamente a las tablas.
 
 ## Ubicación y cantidades
 
