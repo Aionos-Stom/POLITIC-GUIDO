@@ -29,16 +29,19 @@ def administrator_sql(name, username, email, password, phone=''):
         raise ValueError('El teléfono debe tener diez dígitos, o dejarse vacío.')
     salt = secrets.token_bytes(16)
     stored = salt.hex() + ':' + hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000, 32).hex()
+    tag = '$guido_admin_' + uuid.uuid4().hex + '$'
+    while tag in '\n'.join([name, username, email, phone]):
+        tag = '$guido_admin_' + uuid.uuid4().hex + '$'
     return f"""-- Alta manual para el SQL Editor del proyecto Supabase de producción.
 -- No crea cuentas en auth.users ni modifica cuentas existentes.
 BEGIN;
-DO $guido_admin$
+DO {tag}
 BEGIN
   IF EXISTS (SELECT 1 FROM public.users WHERE lower(username)=lower({literal(username)}) OR lower(email)=lower({literal(email)})) THEN
     RAISE EXCEPTION 'Ya existe ese usuario o correo. No se ha modificado ninguna cuenta.';
   END IF;
 END
-$guido_admin$;
+{tag};
 INSERT INTO public.users (id,name,username,email,phone,password_hash,role,status,theme)
 VALUES ('{uuid.uuid4()}',{literal(name)},{literal(username)},{literal(email)},{literal(phone)},{literal(stored)},'Administrador','Aprobado','light')
 RETURNING id,username,name,role,status;

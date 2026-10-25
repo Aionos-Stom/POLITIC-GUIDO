@@ -29,6 +29,20 @@ Abrir el archivo indicado y ejecutar su contenido en el SQL Editor de Supabase. 
 
 Repetir el comando para añadir más administradores con usuarios y correos diferentes. Conservar la contraseña elegida de forma privada. Este comando prepara el alta; no ejecuta escrituras en producción por sí mismo.
 
+## Cambiar las claves de las cuatro cuentas existentes
+
+```bash
+python3 /home/caos/DevOps/proyectos/POLITIC-GUIDO/scripts/cambiar-claves-sql.py --usuarios 4
+```
+
+Introducir el nombre de usuario de cada cuenta y su nueva clave dos veces. No se necesita la clave anterior. El comando genera un archivo privado en `.local/administracion/cambiar-claves-<identificador>.sql`; las claves nuevas no aparecen en texto. Abrir el archivo indicado y ejecutar todo su contenido en el SQL Editor del mismo Supabase de producción.
+
+La transacción cambia únicamente el hash, invalida enlaces de recuperación anteriores y conserva los roles y estados de aprobación. Si alguno de los usuarios no existe o coincide con varias cuentas, revierte el cambio completo. El comando no crea ni elimina cuentas.
+
+Si el backend protegido está instalado, también revoca sus sesiones. Con el acceso heredado basado en el ID del navegador, cambiar la clave no revoca esas sesiones; hay que cerrar sesión en los dispositivos. Después se puede entrar con la nueva clave.
+
+Para cambiar una sola cuenta, sustituir `--usuarios 4` por `--usuarios 1`.
+
 ## Altas posteriores
 
 Toda solicitud desde la web se guarda como `Pendiente`, incluida una solicitud con rol Administrador y aunque no exista ningún administrador. Un administrador aprobado revisa las solicitudes desde Usuarios. El sistema no aprueba automáticamente la primera cuenta.
