@@ -36,6 +36,25 @@
     if (mode !== "api") return { data: null, error: error("El acceso protegido no está disponible. Vuelve a intentarlo.") };
     return call(body);
   }
+  async function confirmedDatabaseMode() {
+    if (typeof rawClient.rpc !== "function") return "unavailable";
+    var controller = new AbortController(), timer;
+    try {
+      // Los 404 de Functions pueden quedar ocultos por CORS. PostgREST devuelve
+      // un error legible y permite confirmar el esquema sin descargar usuarios.
+      var request = rawClient.rpc("guido_backend_status");
+      if (typeof request?.abortSignal === "function") request = request.abortSignal(controller.signal);
+      var result = await Promise.race([request,new Promise(function (resolve) {
+        timer = setTimeout(function () { controller.abort(); resolve(null); },5000);
+      })]);
+      if (result?.error?.code === "PGRST202" && (!result.status || result.status === 404)) return "legacy";
+      if (!result?.error && result?.data?.version === 1 && result.data.enabled === false) return "legacy";
+      // Si está activado, hay errores de permisos o no se puede verificar, no
+      // se permite sustituir el API protegido por consultas directas.
+      return "unavailable";
+    } catch { return "unavailable"; }
+    finally { clearTimeout(timer); controller.abort(); }
+  }
   function builder(table) {
     var command = { table: table, operation: "select", columns: "*", filters: [] }, pending;
     var chain = {
@@ -75,9 +94,9 @@
     endpoint=new URL("/functions/v1/guido-api",config.url).href;
     storageKey="guido_session_v1:"+new URL(config.url).hostname;
     try { token=sessionStorage.getItem(storageKey)||""; } catch {}
-    call({action:"health"},{health:true}).then(function (result) {
-      if (result.error?.status===404) mode="legacy";
-      else if (!result.error && result.data?.version===1) mode=result.data.enabled ? "api" : "legacy";
+    call({action:"health"},{health:true}).then(async function (result) {
+      if (!result.error && result.data?.version===1 && typeof result.data.enabled==="boolean") mode=result.data.enabled ? "api" : "legacy";
+      else if (result.error) mode=await confirmedDatabaseMode();
       else mode="unavailable";
       readyResolve({mode:mode});
     });

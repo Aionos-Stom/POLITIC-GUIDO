@@ -69,6 +69,7 @@ function mockSupabase(seed) {
   }
   window.supabase = { createClient: () => ({ from: query,
     rpc: async function (name) {
+      if(name === "guido_backend_status") return {data:null,error:{code:"PGRST202",message:"Esquema protegido no instalado en esta prueba heredada."},status:404};
       const session = window.getSession?.();
       if (name !== "territory_map_data" || !session || window.__qa.fail || window.__qa.mapDenied) return { data: null, error: { message: "Acceso no disponible" } };
       const rows = window.GuidoTerritory.visibleRows(session, db.voters, db.users);
@@ -147,7 +148,7 @@ async function login(page, username = "coordinacion.qa") {
       await page.route("**/*", route => {
         const url = route.request().url();
         if (url.startsWith(origin + "/")) return route.continue();
-        if (url.includes("/functions/v1/guido-api")) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: { code: "FUNCTION_NOT_FOUND", message: "API no desplegado en esta prueba heredada." } }) });
+        if (url.includes("/functions/v1/guido-api")) return route.abort("failed");
         if (url.includes("@supabase/supabase-js")) return route.fulfill({ contentType: "text/javascript", body: mockSource });
         if (url.startsWith("https://cdn.jsdelivr.net/")) return route.fulfill({ contentType: "text/javascript", body: "/* Dependencia externa sin uso en esta prueba visual. */" });
         failures.push({ stage: name, externalRequestBlocked: url.split("?")[0] });

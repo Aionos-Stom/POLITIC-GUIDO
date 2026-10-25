@@ -32,7 +32,10 @@ function check(label,source){sql(source);report.checks.push(label);console.log('
   file('supabase_setup.sql');file('tests/sql/fixture.sql');
   file('supabase/migrations/202610250001_territory_backend.sql');
   file('tests/sql/assertions.sql');report.checks.push('preparación, permisos, jerarquía, agregados, sincronización y límites');
+  file('supabase/migrations/202610250002_public_backend_status.sql');
+  check('estado público sin permisos sobre datos',"SET ROLE anon; SELECT public.guido_backend_status(); RESET ROLE; SELECT public.qa_assert(NOT has_table_privilege('anon','public.guido_sessions','SELECT') AND NOT has_function_privilege('anon','public.guido_territory_map(uuid)','EXECUTE'),'los datos y los actores siguen privados');");
   file('supabase/migrations/202610250001_territory_backend.sql');
+  file('supabase/migrations/202610250002_public_backend_status.sql');
   check('migración repetible sin perder cuentas',"SELECT public.qa_assert((SELECT count(*)=5 FROM public.users),'cuentas conservadas');");
   file('supabase/activacion/02-activar-api.sql');
   check('corte protegido confirmado',"SELECT public.qa_assert((public.guido_backend_status()->>'protected')::boolean AND (public.guido_backend_status()->>'enabled')::boolean,'corte protegido');");

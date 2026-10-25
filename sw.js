@@ -3,7 +3,7 @@
    Versión: 1.0 · Gestión Territorial República Dominicana
    ========================================================= */
 
-const CACHE_NAME = 'guido-v6-altas-y-creditos';
+const CACHE_NAME = 'guido-v7-deteccion-acceso';
 const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
 
 const ASSETS = [
@@ -14,7 +14,7 @@ const ASSETS = [
   BASE + '/globe.js',
   BASE + '/territory-core.js',
   BASE + '/territory-map.js',
-  BASE + '/data-api-client.js',
+  BASE + '/data-api-client.js?v=7',
   BASE + '/protected-auth.js',
   BASE + '/script.js',
   BASE + '/audit.js',
