@@ -7,7 +7,10 @@
 // ── Supabase client ────────────────────────────────────────────
 const SUPABASE_URL = 'https://smssamxuiksitmmfaosk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtc3NhbXh1aWtzaXRtbWZhb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzQ0MjcsImV4cCI6MjA5ODE1MDQyN30.5Ox_xo0FklquP4KNR--3rz2wVntDut7Rt0Wmp_7UzUE';
-window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const rawSupabase = typeof window.supabase?.createClient === 'function'
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+window.supabase = rawSupabase && window.GuidoBackend
+  ? window.GuidoBackend.wrap(rawSupabase, { url: SUPABASE_URL, key: SUPABASE_ANON_KEY }) : rawSupabase;
 var supabase = window.supabase;
 
 
@@ -108,6 +111,8 @@ const DOM = {
   editUserMunicipio:      document.getElementById('editUserMunicipio'),
   editUserDistrito:       document.getElementById('editUserDistrito'),
   editUserZone:           document.getElementById('editUserZone'),
+  editUserManager:        document.getElementById('editUserManager'),
+  editUserManagerGroup:   document.getElementById('editUserManagerGroup'),
   // Recuperación de contraseña
   forgotPasswordBtn:      document.getElementById('forgotPasswordBtn'),
   forgotPasswordModal:    document.getElementById('forgotPasswordModal'),
@@ -173,17 +178,25 @@ async function verifyPassword(password, stored) {
 
 // ── Capa de datos (Supabase) ────────────────────────────────────
 
-async function getUsers() {
-  const { data, error } = await supabase.from('users').select('*');
-  if (error) { console.error('getUsers:', error); return []; }
-  return data || [];
-}
+const dataFailures = new Set();
 
-async function getVoters() {
-  const { data, error } = await supabase.from('voters').select('*');
-  if (error) { console.error('getVoters:', error); return []; }
-  return data || [];
+async function readRows(table) {
+  try {
+    if (!supabase) throw new Error('Cliente no disponible');
+    const { data, error } = await supabase.from(table).select('*');
+    if (error) throw error;
+    dataFailures.delete(table);
+    window.dispatchEvent(new CustomEvent('guido:data-state', { detail: { failed: dataFailures.size > 0 } }));
+    return data || [];
+  } catch (error) {
+    dataFailures.add(table);
+    window.dispatchEvent(new CustomEvent('guido:data-state', { detail: { failed: true } }));
+    console.warn('No se pudo actualizar ' + table);
+    return [];
+  }
 }
+async function getUsers() { return readRows('users'); }
+async function getVoters() { return readRows('voters'); }
 
 // ── Utilidades ──────────────────────────────────────────────────
 
@@ -263,11 +276,15 @@ function populateRoleSelects() {
   populateSelect(DOM.filterRole, ROLES, 'Todos');
 }
 
+const messageTimers = new WeakMap();
 function showMessage(el, msg, type) {
   if (!el) return;
+  clearTimeout(messageTimers.get(el));
   el.textContent = msg;
   el.className = `status-message show ${type}`;
-  setTimeout(() => { el.className = 'status-message'; el.textContent = ''; }, 3500);
+  if (type === 'success') messageTimers.set(el, setTimeout(() => {
+    el.className = 'status-message'; el.textContent = '';
+  }, 8000));
 }
 
 function switchTab(mode) {
@@ -278,6 +295,13 @@ function switchTab(mode) {
     DOM.showRegister?.classList.add('active'); DOM.showLogin?.classList.remove('active');
     DOM.registerForm?.classList.add('active'); DOM.loginForm?.classList.remove('active');
   }
+  const isLogin = mode === 'login';
+  DOM.showLogin?.setAttribute('aria-selected', String(isLogin));
+  DOM.showRegister?.setAttribute('aria-selected', String(!isLogin));
+  DOM.showLogin?.setAttribute('tabindex', isLogin ? '0' : '-1');
+  DOM.showRegister?.setAttribute('tabindex', isLogin ? '-1' : '0');
+  DOM.authSection?.classList.toggle('is-registering', !isLogin);
+  if (DOM.authMessage) { DOM.authMessage.textContent = ''; DOM.authMessage.className = 'status-message'; }
 }
 
 function applyTheme(theme) {
@@ -288,6 +312,10 @@ function applyTheme(theme) {
 function showAuth() {
   DOM.authSection.classList.remove('hidden');
   DOM.dashboardSection.classList.add('hidden');
+  document.body.classList.remove('is-authenticated');
+  window.dispatchEvent(new Event('guido:session-changed'));
+  document.getElementById('skipLink')?.setAttribute('href', '#accessPanel');
+  if (typeof window._closeSidebar === 'function') window._closeSidebar();
   switchTab('login');
 }
 
@@ -296,6 +324,7 @@ function showAuth() {
 function isAdmin() { return !!currentUser && currentUser.role === 'Administrador'; }
 
 function hasSuperAccess() {
+  if (currentUser?.capabilities) return currentUser.capabilities.superAccess === true;
   return !!currentUser && [
     'Administrador','Coordinador Nacional','Secretario Nacional',
     'Encargado Organizacion','Secretario de Planificacion','Secretario de Disciplina'
@@ -310,15 +339,29 @@ function updateAdminAccess() {
 // ── Visibilidad por rol ─────────────────────────────────────────
 
 async function getVisibleVoters() {
-  if (!currentUser) return [];
+  const session = currentUser;
+  if (!session) return [];
   const voters = await getVoters();
+  if (currentUser !== session) return [];
+  if (window.GuidoTerritory) {
+    const users = window.GuidoTerritory.isCoordinator(session.role) ? await getUsers() : [];
+    if (currentUser !== session) return [];
+    return window.GuidoTerritory.visibleRows(session, voters, users);
+  }
   if (hasSuperAccess()) return voters;
-  return voters.filter(v => v.registered_by_id === currentUser.id);
+  return voters.filter(v => v.registered_by_id === session.id);
 }
 
 async function getVisibleUsers() {
-  if (!currentUser) return [];
+  const session = currentUser;
+  if (!session) return [];
   const users = await getUsers();
+  if (currentUser !== session) return [];
+  if (isAdmin()) return users;
+  if (window.GuidoTerritory) {
+    const ids = window.GuidoTerritory.teamIds(currentUser, users);
+    return users.filter(user => ids.has(user.id));
+  }
   if (hasSuperAccess()) return users;
   return [];
 }
@@ -353,7 +396,9 @@ async function getFilteredVoters() {
 }
 
 async function fillFilterOptions() {
+  const session = currentUser;
   const voters = await getVisibleVoters();
+  if (!session || currentUser !== session) return;
   populateSelect(DOM.filterProvince,  uniqueSortedValues(voters.map(v => v.province)),           'Todas');
   populateSelect(DOM.filterMunicipio, uniqueSortedValues(voters.map(v => v.municipio)),          'Todos');
   populateSelect(DOM.filterSector,    uniqueSortedValues(voters.map(v => v.sector)),             'Todos');
@@ -363,7 +408,7 @@ async function fillFilterOptions() {
     const allUsers = await getUsers();
     populateSelect(DOM.filterRegistrar, uniqueSortedValues(allUsers.filter(u => u.status === 'Aprobado').map(u => u.username)), 'Todos');
   } else {
-    populateSelect(DOM.filterRegistrar, [currentUser.username], 'Todos');
+    populateSelect(DOM.filterRegistrar, uniqueSortedValues(voters.map(v => v.registered_by)), 'Todos');
   }
 }
 
@@ -376,7 +421,6 @@ async function renderVotersTable() {
 
   if (!ordered.length) {
     DOM.votersTableBody.innerHTML = `<tr><td colspan="16">No hay registros para mostrar con los filtros seleccionados.</td></tr>`;
-    if (DOM.filteredCountBadge) DOM.filteredCountBadge.textContent = '0 resultados';
     return;
   }
 
@@ -415,7 +459,6 @@ async function renderVotersTable() {
     DOM.votersTableBody.appendChild(row);
   });
 
-  if (DOM.filteredCountBadge) DOM.filteredCountBadge.textContent = `${ordered.length} resultado${ordered.length !== 1 ? 's' : ''}`;
 }
 
 async function renderUsers() {
@@ -498,97 +541,86 @@ async function renderUsers() {
   });
 }
 
+let searchRenderVersion = 0;
 async function renderSearchResults() {
+  const version = ++searchRenderVersion;
   const [filtered, allUsers] = await Promise.all([
     getFilteredVoters(),
     hasSuperAccess() ? getUsers() : Promise.resolve([])
   ]);
-  const ordered = filtered.sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
-  if (!DOM.searchResults) return;
-  DOM.searchResults.innerHTML = '';
+  if (version !== searchRenderVersion || !DOM.searchResults) return;
+  const ordered = [...filtered].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  DOM.searchResults.replaceChildren();
+  if (DOM.filteredCountBadge) DOM.filteredCountBadge.textContent = dataFailures.has('voters') ? 'Datos no disponibles' : ordered.length + (ordered.length === 1 ? ' resultado' : ' resultados');
   if (!ordered.length) {
-    DOM.searchResults.innerHTML = `<div class="result-item result-empty"><p>No se encontraron resultados con los criterios seleccionados.</p></div>`;
+    const failed = dataFailures.has('voters');
+    DOM.searchResults.innerHTML = '<div class="result-item result-empty" role="listitem"><div class="empty-state"><span class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span><h3>' +
+      (failed ? 'No pudimos cargar los registros.' : 'Todavía no encontramos esa conexión.') +
+      '</h3><p>' + (failed ? 'Comprueba tu conexión y vuelve a intentarlo.' : 'Prueba con otro nombre o ajusta los filtros de búsqueda.') +
+      '</p><button type="button" class="text-btn" ' + (failed ? 'data-retry' : 'data-clear-search') + '>' +
+      (failed ? 'Volver a intentar' : 'Restablecer búsqueda') + '</button></div></div>';
     return;
   }
+  const usersById = Object.fromEntries(allUsers.map(user => [user.id, user]));
+  const field = (label, value, extra = '') => value === undefined || value === null || value === ''
+    ? '' : '<div class="result-field ' + extra + '"><dt class="result-field-label">' + label +
+      '</dt><dd class="result-field-value">' + escapeHtml(value) + '</dd></div>';
 
-  const usersById = {};
-  allUsers.forEach(u => { usersById[u.id] = u; });
-
-  const field = (label, value) => {
-    if (!value) return '';
-    return `<div class="result-field"><span class="result-field-label">${label}</span><span class="result-field-value">${escapeHtml(value)}</span></div>`;
-  };
-
-  ordered.forEach(v => {
-    const registrar = usersById[v.registered_by_id];
-    const regName   = registrar?.name     || v.registered_by_name || '—';
-    const regRole   = registrar?.role     || v.registered_by_role || '—';
-    const regUser   = registrar?.username || v.registered_by      || '—';
-
-    const isOwner  = currentUser && v.registered_by_id === currentUser.id;
-    const canEdit  = hasSuperAccess() || isOwner;
-    const canDelete= hasSuperAccess();
-
-    const actionsHtml = (canEdit || canDelete) ? `
-      <div class="result-action-btns">
-        ${canEdit   ? `<button class="result-btn-edit"   type="button" data-action="edit-voter"   data-id="${escapeHtml(v.id)}">Editar</button>`   : ''}
-        ${canDelete ? `<button class="result-btn-delete" type="button" data-action="delete-voter" data-id="${escapeHtml(v.id)}">Eliminar</button>` : ''}
-      </div>` : '';
-
-    const item = document.createElement('div');
+  ordered.forEach(voter => {
+    const registrar = usersById[voter.registered_by_id];
+    const registrarName = registrar?.name || voter.registered_by_name || 'Sin información';
+    const registrarRole = registrar?.role || voter.registered_by_role || '';
+    const canEdit = hasSuperAccess() || (currentUser && voter.registered_by_id === currentUser.id);
+    const canDelete = hasSuperAccess();
+    const initials = String(voter.name || 'S').trim().split(/\s+/).slice(0, 2).map(word => word[0] || '').join('').toUpperCase();
+    const item = document.createElement('article');
     item.className = 'result-item';
-    item.innerHTML = `
-      <div class="result-card-name">
-        <span class="result-category-badge">SIMPATIZANTE</span>
-        <span class="result-card-name-text">${escapeHtml(v.name)}</span>
-      </div>
-      <div class="result-fields-wrap">
-        ${field('CÉDULA', v.cedula)}
-        ${field('EDAD', v.edad ? v.edad + ' años' : '')}
-        ${field('TELÉFONO', v.phone)}
-        ${field('REGIÓN', v.region)}
-        ${field('PROVINCIA', v.province)}
-        ${field('MUNICIPIO', v.municipio)}
-        ${field('DISTRITO', v.distrito)}
-        ${field('ZONA', v.zone)}
-        ${field('SECTOR', v.sector)}
-        ${field('RECINTO', v.recinto)}
-        ${field('MESA', v.mesa)}
-        ${field('OBSERVACIÓN', v.observacion)}
-        <div class="result-field">
-          <span class="result-field-label">REGISTRADO POR</span>
-          <span class="result-field-value">${escapeHtml(regName)} · ${escapeHtml(regRole)}</span>
-        </div>
-      </div>
-      <div class="result-card-footer">
-        <span class="result-date">${escapeHtml(formatDateDisplay(v.updated_at || v.created_at))}</span>
-        ${actionsHtml}
-      </div>
-    `;
+    item.setAttribute('role', 'listitem');
+    item.innerHTML =
+      '<div class="result-header"><span class="result-avatar" aria-hidden="true">' + escapeHtml(initials) + '</span>' +
+      '<div class="result-card-name"><span class="result-card-name-text">' + escapeHtml(voter.name) + '</span>' +
+      '<span class="result-category-badge">Simpatizante</span></div></div>' +
+      '<dl class="result-primary-fields">' +
+      field('Cédula', voter.cedula) + field('Teléfono', voter.phone) + field('Provincia', voter.province) + '</dl>' +
+      '<details class="result-details"><summary>Ver ficha completa<span class="sr-only"> de ' + escapeHtml(voter.name) + '</span></summary><dl class="result-fields-wrap">' +
+      field('Edad', voter.edad ? voter.edad + ' años' : '') + field('Región', voter.region) +
+      field('Municipio', voter.municipio) + field('Distrito', voter.distrito) + field('Zona', voter.zone) +
+      field('Sector', voter.sector) + field('Recinto', voter.recinto) + field('Mesa', voter.mesa) +
+      field('Registrado por', registrarName + (registrarRole ? ' · ' + registrarRole : '')) +
+      field('Observación', voter.observacion, 'result-note') + '</dl></details>' +
+      '<div class="result-card-footer"><span class="result-date">' + escapeHtml(formatDateDisplay(voter.updated_at || voter.created_at)) + '</span>' +
+      ((canEdit || canDelete) ? '<div class="result-action-btns">' +
+        (canEdit ? '<button class="result-btn-edit" type="button" data-action="edit-voter" data-id="' + escapeHtml(voter.id) + '">Editar</button>' : '') +
+        (canDelete ? '<button class="result-btn-delete" type="button" data-action="delete-voter" data-id="' + escapeHtml(voter.id) + '">Eliminar</button>' : '') + '</div>' : '') +
+      '</div>';
     DOM.searchResults.appendChild(item);
   });
 }
 
 async function updateStats() {
+  const session = currentUser;
+  if (!session) return;
   const labelEl = document.getElementById('statUsersLabel');
   const deltaEl = document.getElementById('statUsersDelta');
 
   if (hasSuperAccess()) {
     const [voters, users] = await Promise.all([getVisibleVoters(), getVisibleUsers()]);
+    if (currentUser !== session) return;
     if (DOM.totalVoters)     DOM.totalVoters.textContent     = voters.length;
     if (DOM.totalUsers)      DOM.totalUsers.textContent      = users.length;
-    if (labelEl) labelEl.textContent = 'Usuarios en el sistema';
+    if (labelEl) labelEl.textContent = 'Equipo';
     if (deltaEl) deltaEl.textContent = 'Total de cuentas creadas';
     const todayKey = getTodayDateKey();
     if (DOM.todayVoters)     DOM.todayVoters.textContent     = voters.filter(v => getDateKey(v.created_at) === todayKey).length;
     if (DOM.activeProvinces) DOM.activeProvinces.textContent = new Set(voters.map(v => v.province).filter(Boolean).map(p => p.trim())).size;
   } else {
-    // Usuarios no-admin: solo cuentan sus propios registros
-    const voters = await getVisibleVoters(); // ya filtra por registered_by_id
+    const voters = await getVisibleVoters();
+    if (currentUser !== session) return;
     if (DOM.totalVoters)     DOM.totalVoters.textContent     = voters.length;
     if (DOM.totalUsers)      DOM.totalUsers.textContent      = voters.length;
-    if (labelEl) labelEl.textContent = 'Mis registros';
-    if (deltaEl) deltaEl.textContent = 'Simpatizantes registrados por mí';
+    const teamView = window.GuidoTerritory?.isCoordinator(session.role);
+    if (labelEl) labelEl.textContent = teamView ? 'Registros del equipo' : 'Mis registros';
+    if (deltaEl) deltaEl.textContent = teamView ? 'Registros propios y del equipo asignado' : 'Simpatizantes registrados por mí';
     const todayKey = getTodayDateKey();
     const todayCount = voters.filter(v => getDateKey(v.created_at) === todayKey).length;
     if (DOM.todayVoters)     DOM.todayVoters.textContent     = todayCount;
@@ -600,6 +632,11 @@ async function updateStats() {
     if (regTotal) regTotal.textContent = voters.length;
     if (regHoy)   regHoy.textContent   = todayCount;
   }
+  if (dataFailures.has('voters')) {
+    [DOM.totalVoters, DOM.todayVoters, DOM.activeProvinces].forEach(element => { if (element) element.textContent = '—'; });
+    if (!hasSuperAccess() && DOM.totalUsers) DOM.totalUsers.textContent = '—';
+  }
+  if (dataFailures.has('users') && hasSuperAccess() && DOM.totalUsers) DOM.totalUsers.textContent = '—';
 }
 
 async function getProvinceCounts() {
@@ -613,102 +650,72 @@ async function getProvinceCounts() {
     .sort((a,b) => b.count - a.count || a.province.localeCompare(b.province,'es'));
 }
 
+function territorialEmptyState(failed = false) {
+  return '<div class="empty-state"><span class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span><h3>' +
+    (failed ? 'El territorio aún no ha cargado.' : 'El próximo registro empieza contigo.') +
+    '</h3><p>' + (failed ? 'Comprueba tu conexión y vuelve a intentarlo.' : 'Los datos de tu equipo aparecerán aquí.') + '</p>' +
+    (failed ? '<button class="text-btn" type="button" data-retry>Volver a intentar</button>' : '') + '</div>';
+}
+
+let rankingRenderVersion = 0;
 async function renderProvinceRanking() {
+  const version = ++rankingRenderVersion;
   const data = await getProvinceCounts();
-  if (!DOM.provinceRanking) return;
-  DOM.provinceRanking.innerHTML = '';
+  if (version !== rankingRenderVersion || !DOM.provinceRanking) return;
+  const failed = dataFailures.has('voters');
+  DOM.provinceRanking.replaceChildren();
+  if (DOM.chartSummaryBadge) DOM.chartSummaryBadge.textContent = failed ? 'Sin conexión con los datos' :
+    data.length + (data.length === 1 ? ' provincia activa' : ' provincias activas');
   if (!data.length) {
-    DOM.provinceRanking.innerHTML = `<div class="result-item"><p>Aún no hay provincias registradas para mostrar.</p></div>`;
-    if (DOM.chartSummaryBadge) DOM.chartSummaryBadge.textContent = '0 provincias activas';
+    DOM.provinceRanking.innerHTML = territorialEmptyState(failed);
     return;
   }
-  if (DOM.chartSummaryBadge) DOM.chartSummaryBadge.textContent = `${data.length} provincia${data.length !== 1 ? 's' : ''} activas`;
-  data.slice(0, 8).forEach((item, i) => {
-    const div = document.createElement('div');
-    div.className = 'ranking-item';
-    div.innerHTML = `
-      <div class="ranking-item-left">
-        <div class="ranking-number">${i+1}</div>
-        <div><h4>${escapeHtml(item.province)}</h4><p>Registros visibles en esta provincia</p></div>
-      </div>
-      <div class="ranking-count">${item.count}</div>
-    `;
-    DOM.provinceRanking.appendChild(div);
+  data.slice(0, 8).forEach((item, index) => {
+    const row = document.createElement('div');
+    row.className = 'ranking-item';
+    row.setAttribute('role', 'listitem');
+    row.innerHTML = '<div class="ranking-item-left"><span class="ranking-number">' + (index + 1) +
+      '</span><div><h4>' + escapeHtml(item.province) + '</h4><p>Registros en esta provincia</p></div></div>' +
+      '<span class="ranking-count">' + new Intl.NumberFormat('es-DO').format(item.count) + '</span>';
+    DOM.provinceRanking.appendChild(row);
   });
 }
 
-// ── Gráfica de barras ───────────────────────────────────────────
-
-function roundRect(ctx, x, y, w, h, r, fill) {
-  r = Math.min(r, w/2, h/2);
-  ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);   ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
-  if (fill) ctx.fill();
-}
-
+// Barras en HTML: nombres completos, reflujo natural y valores accesibles.
+let chartRenderVersion = 0;
 async function drawProvinceChart() {
-  const canvas = DOM.provinceChart;
-  if (!canvas) return;
-  const ctx    = canvas.getContext('2d');
-  const data   = (await getProvinceCounts()).slice(0, 10);
-  const pw     = canvas.parentElement.clientWidth;
-  const width  = Math.max(pw - 10, 300);
-  const height = 320;
-  const ratio  = window.devicePixelRatio || 1;
-  canvas.width  = width * ratio;  canvas.height = height * ratio;
-  canvas.style.width  = `${width}px`;
-  canvas.style.height = `${height}px`;
-  ctx.setTransform(ratio,0,0,ratio,0,0);
-  ctx.clearRect(0,0,width,height);
-
-  const isDark     = document.documentElement.getAttribute('data-theme') === 'dark';
-  const gridColor  = isDark ? '#2a3045' : '#e6edf6';
-  const labelColor = isDark ? '#8da0bc' : '#7f91a8';
-  const countColor = isDark ? '#e4ecf5' : '#102b4c';
-  const axisColor  = isDark ? '#4e607a' : '#5f728b';
-
+  const version = ++chartRenderVersion;
+  const data = (await getProvinceCounts()).slice(0, 10);
+  const chart = DOM.provinceChart;
+  if (version !== chartRenderVersion || !chart) return;
   if (!data.length) {
-    ctx.fillStyle = isDark ? '#4e607a' : '#61758f';
-    ctx.font = '15px Inter, Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Aún no hay datos para mostrar en el gráfico.', width/2, height/2);
+    chart.innerHTML = territorialEmptyState(dataFailures.has('voters'));
     return;
   }
-
-  const pad = { top:20, right:20, bottom:70, left:50 };
-  const cw   = width  - pad.left - pad.right;
-  const ch   = height - pad.top  - pad.bottom;
-  const maxV = Math.max(...data.map(d => d.count), 1);
-  const stepX = cw / data.length;
-  const barW  = Math.min(42, stepX * 0.56);
-
-  ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad.top + (ch/4)*i;
-    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(width-pad.right,y); ctx.stroke();
-    ctx.fillStyle = labelColor; ctx.font = '12px Inter, Segoe UI, sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText(String(Math.round(maxV - (maxV/4)*i)), pad.left-8, y+4);
-  }
-
-  data.forEach((item, i) => {
-    const x  = pad.left + stepX*i + (stepX-barW)/2;
-    const bh = (item.count / maxV) * ch;
-    const y  = pad.top + ch - bh;
-    const gr = ctx.createLinearGradient(0,y,0,y+bh);
-    gr.addColorStop(0,'#0a4a8a'); gr.addColorStop(1,'#ef2d26');
-    ctx.fillStyle = gr;
-    roundRect(ctx,x,y,barW,bh,12,true);
-    ctx.fillStyle = countColor; ctx.font = '700 12px Inter, Segoe UI, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(String(item.count), x+barW/2, y-8);
-    const lbl = item.province.length > 12 ? `${item.province.slice(0,12)}…` : item.province;
-    ctx.save(); ctx.translate(x+barW/2, pad.top+ch+16); ctx.rotate(-Math.PI/6);
-    ctx.fillStyle = axisColor; ctx.font = '12px Inter, Segoe UI, sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText(lbl, 0, 0); ctx.restore();
+  const maximum = Math.max(...data.map(item => item.count), 1);
+  const fragment = document.createDocumentFragment();
+  data.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'chart-row';
+    const heading = document.createElement('div');
+    heading.className = 'chart-row-heading';
+    const label = document.createElement('span');
+    label.textContent = item.province;
+    const value = document.createElement('strong');
+    value.textContent = new Intl.NumberFormat('es-DO').format(item.count);
+    heading.append(label, value);
+    const track = document.createElement('div');
+    track.className = 'chart-track';
+    track.setAttribute('aria-hidden', 'true');
+    const fill = document.createElement('span');
+    fill.className = 'chart-fill';
+    fill.style.setProperty('--bar-ratio', (item.count / maximum * 100) + '%');
+    track.appendChild(fill);
+    row.append(heading, track);
+    fragment.appendChild(row);
   });
+  chart.replaceChildren(fragment);
 }
-
 window.drawProvinceChart = drawProvinceChart;
 
 async function renderAnalytics() {
@@ -719,6 +726,7 @@ async function renderAnalytics() {
 async function renderAll() {
   await Promise.all([renderVotersTable(), renderSearchResults(), renderUsers(), updateStats()]);
   await renderAnalytics();
+  window.dispatchEvent(new Event('guido:records-changed'));
 }
 
 // ── Dashboard ───────────────────────────────────────────────────
@@ -727,6 +735,12 @@ async function loadDashboard() {
   if (!currentUser) return;
   DOM.authSection.classList.add('hidden');
   DOM.dashboardSection.classList.remove('hidden');
+  document.body.classList.add('is-authenticated');
+  window.dispatchEvent(new Event('guido:session-changed'));
+  document.getElementById('skipLink')?.setAttribute('href', '#appContent');
+  if (typeof window.updateSidebarUser === 'function') window.updateSidebarUser(currentUser);
+  if (typeof window.updateAuditAccess === 'function') window.updateAuditAccess();
+  if (typeof window._showPanel === 'function') window._showPanel('overview');
   if (DOM.currentUserInfo) {
     DOM.currentUserInfo.textContent =
       `${currentUser.name} | ${currentUser.role} | ${currentUser.province || ''} | ${currentUser.zone || ''}`;
@@ -739,6 +753,7 @@ async function loadDashboard() {
   if (sidebarName)   sidebarName.textContent   = currentUser.name  || 'Usuario';
   if (sidebarRole)   sidebarRole.textContent   = currentUser.role  || 'Sin rol';
   if (sidebarAvatar) sidebarAvatar.textContent = (currentUser.name || 'U').charAt(0).toUpperCase();
+  if (typeof window.updateSidebarUser === 'function') window.updateSidebarUser(currentUser);
 
   if (hasSuperAccess()) DOM.usersSection?.classList.remove('section-hidden');
   else                  DOM.usersSection?.classList.add('section-hidden');
@@ -756,14 +771,26 @@ async function loadDashboard() {
 
 // Exponer para que ui.js pueda parchear
 window.loadDashboard = loadDashboard;
+window.finishProtectedLogin = async function (user) {
+  currentUser = user;
+  sessionStorage.setItem('upd_uid', user.id);
+  applyTheme(user.theme || 'light');
+  updateAdminAccess();
+  await loadDashboard();
+  document.getElementById('appContent')?.focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: 'instant' });
+};
+window.finishProtectedLogout = function () {
+  currentUser = null;
+  sessionStorage.removeItem('upd_uid');
+  resetVoterForm();
+  updateAdminAccess();
+  applyTheme('light');
+  showAuth();
+};
 
 async function updateInitialHint() {
-  const users = await getUsers();
-  if (!DOM.firstUserHint) return;
-  const approvedAdmins = users.filter(u => u.role === 'Administrador' && u.status === 'Aprobado').length;
-  DOM.firstUserHint.textContent = approvedAdmins === 0
-    ? 'Si aún no existe un Administrador aprobado, el primer Administrador se activará para iniciar la plataforma.'
-    : 'Los nuevos usuarios quedan pendientes hasta ser aprobados por un Administrador.';
+  if (DOM.firstUserHint) DOM.firstUserHint.textContent = 'Todas las solicitudes requieren aprobación de un administrador.';
 }
 
 // ── Reset de formularios ────────────────────────────────────────
@@ -771,8 +798,8 @@ async function updateInitialHint() {
 function resetUserForm() {
   DOM.registerForm?.reset();
   if (DOM.editingUserId)    DOM.editingUserId.value    = '';
-  if (DOM.registerFormTitle)DOM.registerFormTitle.textContent = 'Crear nuevo usuario';
-  if (DOM.saveUserBtn)      DOM.saveUserBtn.textContent = 'Crear usuario';
+  if (DOM.registerFormTitle)DOM.registerFormTitle.textContent = 'Solicita acceso a tu equipo';
+  if (DOM.saveUserBtn)      DOM.saveUserBtn.textContent = 'Solicitar acceso';
   DOM.cancelEditUserBtn?.classList.add('hidden');
   if (DOM.registerProvince) DOM.registerProvince.value = '';
   populateRoleSelects();
@@ -782,8 +809,8 @@ function resetVoterForm() {
   DOM.voterForm?.reset();
   if (DOM.editingVoterId)       DOM.editingVoterId.value       = '';
   if (DOM.voterProvince)        DOM.voterProvince.value        = '';
-  if (DOM.voterFormTitle)       DOM.voterFormTitle.textContent = 'Registrar votante / simpatizante';
-  if (DOM.voterFormDescription) DOM.voterFormDescription.textContent = 'Complete los datos requeridos de forma organizada y precisa.';
+  if (DOM.voterFormTitle)       DOM.voterFormTitle.textContent = 'Nuevo simpatizante';
+  if (DOM.voterFormDescription) DOM.voterFormDescription.textContent = 'Los campos marcados con un asterisco son obligatorios.';
   if (DOM.saveVoterBtn)         DOM.saveVoterBtn.textContent   = 'Guardar registro';
   DOM.cancelEditVoterBtn?.classList.add('hidden');
 }
@@ -806,7 +833,7 @@ function openUserEditModal() {
   document.body.classList.add('modal-open');
 }
 
-function fillUserForm(user) {
+async function fillUserForm(user) {
   populateRoleSelects(); populateProvinceSelects();
   DOM.editUserName.value      = user.name      || '';
   DOM.editUserUsername.value  = user.username  || '';
@@ -819,6 +846,16 @@ function fillUserForm(user) {
   DOM.editUserDistrito.value  = user.distrito  || '';
   DOM.editUserZone.value      = user.zone      || '';
   DOM.editUserId.value        = user.id        || '';
+  const secure = !!window.GuidoBackend?.isSecure();
+  DOM.editUserManagerGroup?.classList.toggle('hidden', !secure);
+  if (secure && DOM.editUserManager) {
+    const users = await getUsers();
+    const descendants = window.GuidoTerritory?.teamIds({ ...user, role: 'Coordinador Nacional' }, users) || new Set([user.id]);
+    DOM.editUserManager.replaceChildren(new Option('Sin responsable asignado', ''));
+    users.filter(u => u.status === 'Aprobado' && (u.role === 'Administrador' || /^Coordinador/i.test(u.role)) && !descendants.has(u.id))
+      .sort((a,b) => a.name.localeCompare(b.name,'es')).forEach(u => DOM.editUserManager.add(new Option(u.name + ' · ' + u.role, u.id)));
+    DOM.editUserManager.value = user.manager_id || '';
+  }
   openUserEditModal();
 }
 
@@ -841,24 +878,24 @@ function fillVoterForm(voter) {
   if (DOM.voterFormDescription) DOM.voterFormDescription.textContent = 'Modifique los datos del simpatizante registrado.';
   if (DOM.saveVoterBtn)         DOM.saveVoterBtn.textContent         = 'Guardar cambios';
   DOM.cancelEditVoterBtn?.classList.remove('hidden');
+  if (typeof window._showPanel === 'function') window._showPanel('registro', true);
 }
 
 // ── Exportar Excel ──────────────────────────────────────────────
 
 async function exportToExcel() {
   if (!currentUser) { await showAlert('Sesión requerida', 'Debes iniciar sesión para exportar los registros.', 'warning'); return; }
-  const allFiltered = await getFilteredVoters();
-  const voters = hasSuperAccess()
-    ? allFiltered
-    : allFiltered.filter(v => v.registered_by_id === currentUser.id);
+  const session = currentUser;
+  const voters = await getFilteredVoters();
+  if (currentUser !== session) return;
   if (!voters.length) { await showAlert('Sin registros', 'No hay datos para exportar con los filtros seleccionados.', 'info'); return; }
 
   const ordered = [...voters].sort((a,b) => {
-    if (a.registered_by_role  !== b.registered_by_role)  return a.registered_by_role.localeCompare(b.registered_by_role,'es');
-    if (a.registered_by_name  !== b.registered_by_name)  return a.registered_by_name.localeCompare(b.registered_by_name,'es');
-    if (a.province !== b.province) return a.province.localeCompare(b.province,'es');
-    if (a.municipio !== b.municipio) return a.municipio.localeCompare(b.municipio,'es');
-    return a.name.localeCompare(b.name,'es');
+    for (const field of ['registered_by_role','registered_by_name','province','municipio','name']) {
+      const comparison = String(a[field] || '').localeCompare(String(b[field] || ''),'es');
+      if (comparison) return comparison;
+    }
+    return 0;
   });
 
   const fechaReporte = new Intl.DateTimeFormat('es-DO', { dateStyle: 'full', timeStyle: 'short' }).format(new Date());
@@ -1063,6 +1100,7 @@ xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC
 }
 
 async function clearFilters() {
+  clearTimeout(filterRefreshTimer);
   if (DOM.searchInput)     DOM.searchInput.value     = '';
   if (DOM.filterProvince)  DOM.filterProvince.value  = '';
   if (DOM.filterMunicipio) DOM.filterMunicipio.value = '';
@@ -1070,6 +1108,7 @@ async function clearFilters() {
   if (DOM.filterMesa)      DOM.filterMesa.value      = '';
   if (DOM.filterRole)      DOM.filterRole.value      = '';
   if (DOM.filterRegistrar) DOM.filterRegistrar.value = '';
+  window.dispatchEvent(new Event('guido:filters-cleared'));
   await renderVotersTable(); await renderSearchResults(); await renderAnalytics();
 }
 
@@ -1222,45 +1261,49 @@ DOM.resetForm?.addEventListener('submit', async function(e) {
 DOM.loginForm?.addEventListener('submit', async function(e) {
   e.preventDefault();
   const identifier = normalizeText(document.getElementById('loginUser').value);
-  const password   = normalizeText(document.getElementById('loginPassword').value);
-
+  const password = normalizeText(document.getElementById('loginPassword').value);
+  const button = this.querySelector('button[type="submit"]');
+  if (button?.disabled) return;
   if (!identifier || !password) {
-    showMessage(DOM.authMessage, 'Ingresa tu usuario/correo y contraseña.', 'error'); return;
+    showMessage(DOM.authMessage, 'Ingresa tu usuario o correo y tu contraseña.', 'error');
+    return;
   }
-
-  // Buscar por email o por username (sin distinción de mayúsculas)
-  const isEmail = identifier.includes('@');
-  const { data: user } = await supabase
-    .from('users')
-    .select('*')
-    .filter(isEmail ? 'email' : 'username', 'ilike', identifier)
-    .maybeSingle();
-
-  if (!user) {
-    showMessage(DOM.authMessage, 'Usuario o contraseña incorrectos.', 'error'); return;
+  if (!supabase) {
+    showMessage(DOM.authMessage, 'No se pudo cargar el acceso. Comprueba tu conexión y recarga esta página.', 'error');
+    return;
   }
-
-  const valid = await verifyPassword(password, user.password_hash);
-  if (!valid) {
-    showMessage(DOM.authMessage, 'Usuario o contraseña incorrectos.', 'error'); return;
+  const originalContent = button?.innerHTML;
+  if (button) { button.disabled = true; button.textContent = 'Verificando acceso…'; }
+  this.setAttribute('aria-busy', 'true');
+  try {
+    const { data: user, error } = await supabase.from('users').select('*')
+      .filter(identifier.includes('@') ? 'email' : 'username', 'ilike', identifier).maybeSingle();
+    if (error) throw error;
+    if (!user || !(await verifyPassword(password, user.password_hash))) {
+      showMessage(DOM.authMessage, 'Usuario o contraseña incorrectos.', 'error');
+      return;
+    }
+    if ((user.status || 'Pendiente') !== 'Aprobado') {
+      showMessage(DOM.authMessage, 'Tu solicitud de acceso todavía está pendiente de aprobación.', 'info');
+      return;
+    }
+    currentUser = user;
+    sessionStorage.setItem('upd_uid', user.id);
+    applyTheme(user.theme || 'light');
+    if (typeof window.logAudit === 'function') window.logAudit('SESSION_LOGIN', user.id, user.name, {
+      usuario: user.username, rol: user.role, región: user.region || '—',
+      provincia: user.province || '—', municipio: user.municipio || '—'
+    });
+    updateAdminAccess();
+    await loadDashboard();
+    document.getElementById('appContent')?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } catch (error) {
+    showMessage(DOM.authMessage, 'No pudimos verificar el acceso. Comprueba tu conexión y vuelve a intentarlo.', 'error');
+  } finally {
+    this.removeAttribute('aria-busy');
+    if (button) { button.disabled = false; button.innerHTML = originalContent; }
   }
-
-  if ((user.status || 'Pendiente') !== 'Aprobado') {
-    showMessage(DOM.authMessage, 'Tu usuario aún está pendiente de aprobación.', 'error'); return;
-  }
-
-  currentUser = user;
-  sessionStorage.setItem('upd_uid', user.id);
-  applyTheme(user.theme || 'light');
-  if (typeof window.logAudit === 'function') window.logAudit('SESSION_LOGIN', user.id, user.name, {
-    usuario:   user.username,
-    rol:       user.role,
-    región:    user.region   || '—',
-    provincia: user.province || '—',
-    municipio: user.municipio|| '—',
-  });
-  updateAdminAccess();
-  await loadDashboard();
 });
 
 // ── Eventos: Logout ─────────────────────────────────────────────
@@ -1300,7 +1343,7 @@ DOM.registerForm?.addEventListener('submit', async function(e) {
   const password  = normalizeText(DOM.registerPassword.value);
   const passConf  = normalizeText(DOM.registerPasswordConfirm.value);
 
-  if (!name||!username||!role||!email||!phone||!province||!region||!municipio||!distrito||!zone||!password||!passConf) {
+  if (!name||!username||!role||!email||!phone||!province||!zone||!password||!passConf) {
     showMessage(DOM.authMessage, 'Complete todos los campos del usuario.', 'error'); return;
   }
   if (!isValidEmail(email))  { showMessage(DOM.authMessage, 'Ingrese un correo personal válido.', 'error'); return; }
@@ -1314,10 +1357,7 @@ DOM.registerForm?.addEventListener('submit', async function(e) {
     showMessage(DOM.authMessage, 'Ese correo ya está registrado.', 'error'); return;
   }
 
-  const approvedAdmins = users.filter(u => u.role === 'Administrador' && u.status === 'Aprobado').length;
-  const bootstrapAdmin = approvedAdmins === 0 && role === 'Administrador';
-  const createdByAdmin = hasSuperAccess();
-  const status         = bootstrapAdmin || createdByAdmin ? 'Aprobado' : 'Pendiente';
+  const status = 'Pendiente';
 
   const passwordHash = await hashPassword(password);
   const newUserId    = crypto.randomUUID();
@@ -1376,13 +1416,16 @@ DOM.userEditForm?.addEventListener('submit', async function(e) {
     showMessage(DOM.userEditMessage, 'Ese correo ya está registrado.', 'error'); return;
   }
 
-  const { error } = await supabase.from('users')
-    .update({ name, username, role, email, phone, region, province, municipio, distrito, zone })
+  const secure = !!window.GuidoBackend?.isSecure();
+  const values = { name, username, role, email, phone, region, province, municipio, distrito, zone };
+  if (secure) values.manager_id = DOM.editUserManager.value || null;
+  const { data: updatedUsers, error } = await supabase.from('users')
+    .update(values)
     .eq('id', editingId);
   if (error) { showMessage(DOM.userEditMessage, 'Error al actualizar: ' + error.message, 'error'); return; }
 
-  // Actualizar datos del registrador en sus votantes
-  await supabase.from('voters').update({
+  // En el API protegido lo sincroniza la base de datos en la misma transacción.
+  if (!secure) await supabase.from('voters').update({
     registered_by:          username,
     registered_by_name:     name,
     registered_by_role:     role,
@@ -1400,7 +1443,7 @@ DOM.userEditForm?.addEventListener('submit', async function(e) {
     window.logAudit('USER_EDIT', editingId, name, { tipo: 'edicion', cambios: _cambios });
   }
   if (currentUser?.id === editingId) {
-    currentUser = { ...currentUser, name, username, role, email, phone, region, province, municipio, distrito, zone };
+    currentUser = secure ? updatedUsers[0] : { ...currentUser, ...values };
   }
 
   showMessage(DOM.userEditMessage, 'Usuario actualizado correctamente.', 'success');
@@ -1477,7 +1520,7 @@ DOM.voterForm?.addEventListener('submit', async function(e) {
   const observacion= normalizeText(DOM.voterObservation.value);
   const editingId  = normalizeText(DOM.editingVoterId.value);
 
-  if (!name||!cedula||!phone||!edad||!region||!province||!municipio||!distrito||!zone||!sector||!mesa||!recinto) {
+  if (!name||!cedula||!phone||!edad||!province||!municipio||!zone||!sector||!mesa||!recinto) {
     showMessage(DOM.voterMessage, 'Complete todos los campos requeridos (incluyendo edad).', 'error'); return;
   }
   if (edad < 16 || edad > 120) { showMessage(DOM.voterMessage, 'La edad debe estar entre 16 y 120 años.', 'error'); return; }
@@ -1662,19 +1705,21 @@ DOM.voterCedula?.addEventListener('input', function(e) {
 
 // ── Eventos: Filtros ────────────────────────────────────────────
 
-[DOM.searchInput, DOM.filterProvince, DOM.filterMunicipio,
- DOM.filterSector, DOM.filterMesa, DOM.filterRole, DOM.filterRegistrar]
-  .forEach(el => {
-    el?.addEventListener('input',  async () => { await renderVotersTable(); await renderSearchResults(); await renderAnalytics(); });
-    el?.addEventListener('change', async () => { await renderVotersTable(); await renderSearchResults(); await renderAnalytics(); });
-  });
+let filterRefreshTimer;
+async function refreshFilteredResults() {
+  await Promise.all([renderVotersTable(), renderSearchResults(), renderAnalytics()]);
+}
+DOM.searchInput?.addEventListener('input', () => {
+  clearTimeout(filterRefreshTimer);
+  filterRefreshTimer = setTimeout(refreshFilteredResults, 180);
+});
+[DOM.filterProvince, DOM.filterMunicipio, DOM.filterSector, DOM.filterMesa, DOM.filterRole, DOM.filterRegistrar]
+  .forEach(element => element?.addEventListener('change', refreshFilteredResults));
 
 DOM.clearFiltersBtn?.addEventListener('click', clearFilters);
 DOM.exportBtn?.addEventListener('click', exportToExcel);
 
-window.addEventListener('resize', async () => {
-  if (DOM.dashboardSection && !DOM.dashboardSection.classList.contains('hidden')) await drawProvinceChart();
-});
+// La gráfica usa el flujo del documento y se adapta sin peticiones en cada resize.
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -1824,6 +1869,19 @@ function showAlert(title, message, type = 'info') {
 (async function init() {
   populateProvinceSelects();
   populateRoleSelects();
+  if (!supabase) {
+    showAuth();
+    showMessage(DOM.authMessage, 'No se pudo cargar el acceso. Comprueba tu conexión y recarga esta página.', 'error');
+    return;
+  }
+  if (window.GuidoBackend) {
+    await window.GuidoBackend.ready;
+    if (window.GuidoBackend.isSecure()) {
+      await updateInitialHint();
+      await window.GuidoProtectedAuth.initialize();
+      return;
+    }
+  }
   await updateInitialHint();
   updateAdminAccess();
 

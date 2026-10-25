@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import nodemailer from "npm:nodemailer@6";
+import { createStore } from "../guido-api/store.mjs";
+import { resetMessage, maySend } from "./policy.mjs";
+
+const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const databaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const appUrl = Deno.env.get("GUIDO_PUBLIC_APP_URL") || "https://aionos-stom.github.io/POLITIC-GUIDO/";
+const store = createStore(databaseUrl,serviceKey);
 
 const CORS = {
   "Access-Control-Allow-Origin":  "*",
@@ -11,16 +18,16 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
   }
+  if (req.method !== "POST") return new Response(null,{status:405,headers:CORS});
 
   try {
-    const { to_email, to_name, reset_link, expires_in = "1 hora" } = await req.json();
-
-    if (!to_email || !reset_link) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Faltan campos requeridos." }),
-        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
-      );
-    }
+    if (!await maySend(req,store,serviceKey)) return new Response(JSON.stringify({ok:false,error:"Envío no autorizado."}),{status:403,headers:{...CORS,"Content-Type":"application/json"}});
+    const raw = await req.text();
+    if (raw.length > 16384) return new Response(null,{status:413,headers:CORS});
+    let message;
+    try { message=resetMessage(JSON.parse(raw),appUrl); }
+    catch { return new Response(JSON.stringify({ok:false,error:"Datos del mensaje no válidos."}),{status:400,headers:{...CORS,"Content-Type":"application/json"}}); }
+    const {email:to_email,name:to_name,link:reset_link,expires:expires_in}=message;
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -121,8 +128,8 @@ serve(async (req: Request) => {
     });
 
   } catch (err) {
-    console.error("enviar-correo error:", err);
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
+    console.error("enviar-correo: DELIVERY_FAILED");
+    return new Response(JSON.stringify({ ok: false, error: "No se pudo enviar el mensaje." }), {
       status: 500,
       headers: { ...CORS, "Content-Type": "application/json" },
     });

@@ -3,19 +3,28 @@
    Versión: 1.0 · Gestión Territorial República Dominicana
    ========================================================= */
 
-const CACHE_NAME = 'guido-v1';
+const CACHE_NAME = 'guido-v6-altas-y-creditos';
 const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
 
 const ASSETS = [
   BASE + '/',
   BASE + '/index.html',
   BASE + '/styles.css',
+  BASE + '/globe.css',
+  BASE + '/globe.js',
+  BASE + '/territory-core.js',
+  BASE + '/territory-map.js',
+  BASE + '/data-api-client.js',
+  BASE + '/protected-auth.js',
   BASE + '/script.js',
   BASE + '/audit.js',
   BASE + '/ui.js',
   BASE + '/exportXLS_plantilla.js',
   BASE + '/manifest.json',
   BASE + '/icons/icon.svg',
+  BASE + '/assets/fonts/manrope-variable.ttf',
+  BASE + '/assets/data/mundo.json',
+  BASE + '/assets/data/provincias.json',
 ];
 
 // Instalación: pre-cachear todos los assets
@@ -32,7 +41,7 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(
-        keys.filter(function (k) { return k !== CACHE_NAME; })
+        keys.filter(function (k) { return k.startsWith('guido-') && k !== CACHE_NAME; })
             .map(function (k) { return caches.delete(k); })
       );
     }).then(function () { return self.clients.claim(); })
@@ -45,7 +54,9 @@ self.addEventListener('fetch', function (e) {
 
   // Solo manejar peticiones GET del mismo origin
   if (req.method !== 'GET') return;
-  if (!req.url.startsWith(self.location.origin)) return;
+  var url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  if (!url.pathname.startsWith(BASE + '/')) return;
 
   // HTML: network-first (para recibir actualizaciones)
   if (req.mode === 'navigate') {

@@ -1,0 +1,8 @@
+# Archivos locales, pruebas visuales y herramientas de desarrollo.
+.local/
+node_modules/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
