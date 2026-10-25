@@ -1,8 +1,27 @@
-# Archivos locales, pruebas visuales y herramientas de desarrollo.
-.local/
-node_modules/
-__pycache__/
-*.py[cod]
-.env
-.env.*
-!.env.example
+# El repositorio contiene únicamente la publicación y sus créditos.
+/*
+!/.gitignore
+!/.nojekyll
+!/README.md
+!/index.html
+!/manifest.json
+!/sw.js
+!/assets/
+/assets/*
+!/assets/app.*.js
+!/assets/app.*.css
+!/assets/NOTICE.txt
+!/assets/data/
+/assets/data/*
+!/assets/data/mundo.json
+!/assets/data/provincias.json
+!/assets/fonts/
+/assets/fonts/*
+!/assets/fonts/manrope-variable.ttf
+!/assets/fonts/OFL.txt
+!/icons/
+/icons/*
+!/icons/icon.svg
+!/Logos/
+/Logos/*
+!/Logos/c3380bdf-93e0-4617-a452-797675ce82be.jpeg

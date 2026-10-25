@@ -1,0 +1,4 @@
+Manrope: SIL Open Font License 1.1; ver fonts/OFL.txt.
+Geografía mundial: Natural Earth, dominio público. https://www.naturalearthdata.com/about/terms-of-use/
+Provincias: geoBoundaries gbOpen DOM ADM1, fuente Natural Earth, dominio público según metadatos. https://www.geoboundaries.org/api/current/gbOpen/DOM/ADM1/
+Los centroides provinciales son referencias aproximadas.

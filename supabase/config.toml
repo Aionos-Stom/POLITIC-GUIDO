@@ -1,4 +1,0 @@
-# El API verifica las sesiones opacas emitidas tras comprobar la contraseña.
-# No utiliza la clave pública anon como identidad de usuario.
-[functions.guido-api]
-verify_jwt = false

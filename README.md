@@ -1,81 +1,39 @@
 # GUIDO
 
-Plataforma de gestión territorial con acceso de equipo, registro de simpatizantes, consulta, administración de usuarios y auditoría.
+Plataforma de gestión territorial para organizar equipos, registrar simpatizantes y dar seguimiento al trabajo de cada zona.
 
-La aplicación conserva su estructura de HTML, CSS y JavaScript. No requiere compilar ni instalar paquetes para abrir la interfaz. La conexión de datos y la recuperación por correo utilizan la integración de Supabase existente.
+**Acceso:** https://aionos-stom.github.io/POLITIC-GUIDO/
 
-## Probar con datos ficticios
+## Funciones
 
-```bash
-/home/caos/.nvm/versions/node/v22.23.4/bin/node scripts/probar-local.cjs
-```
+- Inicio de sesión con usuario o correo y recuperación de contraseña mediante la integración de Supabase.
+- Solicitud de acceso organizada por información personal, equipo y territorio, y contraseña. Todas las solicitudes requieren aprobación de un administrador.
+- Administración de perfiles y asignación de equipos, consulta con filtros, exportaciones y auditoría.
+- Planeta de bienvenida y mapa territorial con detalle de zonas y sectores. El mapa privado requiere el backend protegido y respeta el alcance autorizado de cada cuenta.
+- Diseño adaptable a móviles, tabletas y pantallas grandes, navegación por teclado y tema oscuro.
 
-Abre `http://localhost:4055`. Usuario `admin`, contraseña `PruebaLocal!2026`. Los perfiles `coordinator` y `register` utilizan la misma contraseña de demostración. Este acceso pertenece exclusivamente al servidor local, no a las cuentas de producción.
+El primer administrador se crea manualmente en la base de datos. Las cuentas de demostración locales no sirven para acceder a producción.
 
-El servidor reutiliza los módulos del API con almacenamiento en memoria y sustituye la configuración de Supabase únicamente al servir los archivos. No modifica `script.js`, no utiliza la base remota y no envía correo. El enlace «Bandeja de correo de prueba» permite comprobar la recuperación. Al cerrar el proceso se descartan todos los cambios de demostración. `PORT=4056` permite elegir otro puerto libre. En otro equipo puede utilizarse `node` 22 o una versión compatible ya instalada.
+## Publicación
 
-## Desarrollo local
+Esta rama contiene los archivos estáticos que necesita GitHub Pages: `index.html`, `sw.js`, `manifest.json`, `.nojekyll`, los paquetes compactados en `assets/`, la geografía pública, la fuente y los iconos. No requiere instalar dependencias ni compilar en GitHub.
 
-Requiere Python 3 para servir los archivos. Desde esta carpeta:
+El JavaScript y el CSS se entregan agrupados y compactados, sin mapas de código fuente. El navegador necesita recibir el HTML, el CSS y el JavaScript para ejecutar la web y permite inspeccionarlos.
 
-```bash
-python3 -m http.server 4020 --bind 127.0.0.1
-```
+La base de datos y las funciones de Supabase se despliegan por separado; publicar esta web no las crea ni las modifica. Las claves privadas y los secretos del servidor no forman parte de estos archivos.
 
-Abre `http://localhost:4020`. Si ese puerto está ocupado, utiliza otro puerto libre. En este espacio de Ubuntu también está disponible el gestor local, que selecciona un puerto libre y comunica su valor mediante `PORT`.
+## Trabajo local
 
-La interfaz carga Manrope y la geografía desde `assets/`. El planeta se dibuja en el navegador con WebGL y dispone de un modo compatible. El cliente de Supabase y las herramientas de exportación conservan las referencias del repositorio. La consulta y el guardado de datos necesitan conexión.
-
-La preparación inicial de la referencia provincial usa únicamente datos públicos:
+Las fuentes editables, las pruebas, el backend, los comandos de administración y la documentación técnica se conservan en Ubuntu dentro de `.local/desarrollo`, excluido de Git. Para preparar una nueva publicación desde este equipo:
 
 ```bash
-python3 scripts/preparar-geografia.py
+/home/caos/.nvm/versions/node/v22.23.4/bin/node .local/desarrollo/scripts/preparar-publicacion.cjs
 ```
 
-## Comprobaciones
+El comando reutiliza las herramientas locales instaladas y no actualiza dependencias. Solo se debe subir una publicación después de revisarla y autorizarla. Esta copia local debe conservarse: clonar la rama de publicación descarga los archivos de la web, no las fuentes de desarrollo.
 
-Las pruebas de lógica usan únicamente Node.js; se verificaron con Node 22.23.4:
+## Créditos
 
-```bash
-node tests/territorio.test.cjs
-node tests/mapa.test.cjs
-node tests/globo.test.cjs
-node tests/api.test.mjs
-node tests/cliente-api.test.mjs
-node --check script.js
-node --check ui.js
-node --check audit.js
-node --check sw.js
-node --check globe.js
-node --check territory-map.js
-node --check data-api-client.js
-node --check protected-auth.js
-```
+Desarrollado por **JyB Technology Solutions SRL**.
 
-La prueba de navegador necesita Playwright 1.64.1 y Chromium. En este Ubuntu se reutilizan las herramientas locales ya instaladas:
-
-```bash
-node scripts/verificar-ui.cjs
-```
-
-Para revisar únicamente el cierre pendiente (móvil de 390 píxeles, texto al 200 % y acceso protegido en móvil y escritorio), usa `node scripts/verificar-ui.cjs --cierre`. Guarda su alcance y resultado en `.local/qa/resultado-cierre.json`, sin sobrescribir el informe de la matriz completa.
-
-En otro entorno, proporciona la ruta de una instalación de Playwright mediante `GUIDO_PLAYWRIGHT_PATH` y, si corresponde, la de Chromium mediante `GUIDO_CHROMIUM_PATH`. El verificador también detecta un módulo `playwright` disponible en el proyecto. No instala ni actualiza dependencias automáticamente.
-
-Para comprobar las migraciones y el corte en un PostgreSQL desechable con Docker:
-
-```bash
-node scripts/verificar-db.cjs
-```
-
-No conecta con Supabase ni modifica la base real. Si una terminal nueva no encuentra `node`, carga NVM con `source "$HOME/.nvm/nvm.sh"` y selecciona la versión ya instalada con `nvm use 22`; no hace falta reinstalar paquetes.
-
-El verificador de navegador abre un servidor temporal en un puerto libre. Sustituye el cliente de datos durante la prueba y bloquea servicios externos: no utiliza cuentas reales, no modifica Supabase y no envía correos. Revisa acceso heredado y protegido, restauración de sesión, equipos, recuperación, ventanas de zonas y sectores, campos, filtros, menús, tema, errores, textos extensos y desbordamientos entre 320 y 3840 píxeles. Incluye orientación horizontal y texto ampliado al 200 %.
-
-El informe queda en `.local/qa/resultado.json` y las capturas en `.local/qa/capturas/`. Son archivos de trabajo local y no se deben publicar. La emulación en Chromium complementa la comprobación en dispositivos; no certifica Safari, Android ni televisores físicos.
-
-La dirección visual y las decisiones de adaptación están documentadas en [docs/diseno-responsive.md](docs/diseno-responsive.md).
-
-El alcance por roles y los requisitos pendientes para activar el mapa con datos reales están en [docs/mapa-territorial.md](docs/mapa-territorial.md). El procedimiento de activación está en [docs/activacion-supabase.md](docs/activacion-supabase.md). La migración SQL está preparada localmente y no se ha aplicado a Supabase. La aplicación no presenta un mapa con datos privados si no puede verificar su acceso protegido.
-
-El primer administrador se crea manualmente en `public.users`; todas las solicitudes web quedan pendientes. La consulta de cuentas de producción y el comando de alta manual están en [docs/administradores.md](docs/administradores.md).
+Manrope se distribuye bajo SIL Open Font License; se conserva su licencia en `assets/fonts/OFL.txt`. Las atribuciones de la geografía pública están en `assets/NOTICE.txt`.
