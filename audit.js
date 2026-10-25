@@ -183,6 +183,9 @@
             ? '<span class="audit-target-pill">' + esc(e.target_name) + '</span>'
             : '<span class="audit-null">—</span>') + "</td>" +
           '<td class="audit-details-cell">' + details + "</td>";
+        ["Fecha / hora", "Actor", "Rol", "Acción", "Objetivo", "Detalles"].forEach(function (label, index) {
+          tr.children[index].setAttribute("data-label", label);
+        });
         tbody.appendChild(tr);
       });
     }
@@ -329,7 +332,7 @@
 
     var obj = {};
     try { obj = JSON.parse(raw); } catch (x) {
-      var s = String(raw); s = s.length > 50 ? s.slice(0, 48) + "…" : s;
+      var s = String(raw);
       return '<span class="audit-detail-text">' + esc(s) + '</span>';
     }
     if (typeof obj !== "object" || obj === null) obj = {};
@@ -397,7 +400,7 @@
         break;
       default: {
         var first = Object.values(obj).find(function(v) { return v && v !== "—"; });
-        if (first) parts.push(String(first).slice(0, 35));
+        if (first) parts.push(String(first));
       }
     }
     if (!parts.length) return '<span class="audit-null">—</span>';
